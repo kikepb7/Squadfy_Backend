@@ -1,9 +1,6 @@
 package com.kikepb.squadfy.api.controller
 
-import com.kikepb.squadfy.api.dto.AuthenticatedUserDto
-import com.kikepb.squadfy.api.dto.LoginRequest
-import com.kikepb.squadfy.api.dto.RegisterRequest
-import com.kikepb.squadfy.api.dto.UserDto
+import com.kikepb.squadfy.api.dto.*
 import com.kikepb.squadfy.api.mappers.toAuthenticatedUserDto
 import com.kikepb.squadfy.api.mappers.toUserDto
 import com.kikepb.squadfy.service.auth.AuthService
@@ -35,6 +32,15 @@ class Authcontroller(
         return authService.login(
             email = body.email,
             password = body.password
+        ).toAuthenticatedUserDto()
+    }
+
+    @PostMapping("/refresh")
+    fun refresh(
+        @RequestBody body: RefreshRequest
+    ): AuthenticatedUserDto {
+        return authService.refresh(
+            refreshToken = body.refreshToken
         ).toAuthenticatedUserDto()
     }
 }
