@@ -3,10 +3,8 @@ spring:
     name: squadfy
 
   datasource:
-#    IPv6
-#    url: jdbc:postgresql://db.tohbifpjwvqxgjuzrkhm.supabase.co:5432/postgres?sslmode=require&preferQueryMode=simple&disablePreferredIps=true
-    url: jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require&preferQueryMode=simple&disablePreferredIps=true
-    username: postgres.tohbifpjwvqxgjuzrkhm
+    url: jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.whuvrfyzegghgckbciuz
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
@@ -27,9 +25,13 @@ spring:
         socketTimeout: 30
         connectTimeout: 10
 
-      jpa:
-        properties:
-          hibernate:
-            dialect: org.hibernate.dialect.PostgreSQLDialect
-            format_sql: true
-            show_sql: true
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        show_sql: true
+
+jwt:
+  secret: ${JWT_SECRET_BASE64}
+  expiration-minutes: 15
