@@ -1,7 +1,7 @@
 package com.kikepb.squadfy.domain.model
 
-data class AuthenticatedUser(
-    val user: User,
+data class AuthenticatedUserModel(
+    val user: UserModel,
     val accessToken: String,
     val refreshToken: String,
 )

@@ -35,3 +35,8 @@ spring:
 jwt:
   secret: ${JWT_SECRET_BASE64}
   expiration-minutes: 15
+
+squadfy:
+  email:
+    verification:
+      expiry-hours: 24
