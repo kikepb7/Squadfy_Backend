@@ -2,10 +2,10 @@ package com.kikepb.squadfy.api.mappers
 
 import com.kikepb.squadfy.api.dto.AuthenticatedUserDto
 import com.kikepb.squadfy.api.dto.UserDto
-import com.kikepb.squadfy.domain.model.AuthenticatedUser
-import com.kikepb.squadfy.domain.model.User
+import com.kikepb.squadfy.domain.model.AuthenticatedUserModel
+import com.kikepb.squadfy.domain.model.UserModel
 
-fun AuthenticatedUser.toAuthenticatedUserDto(): AuthenticatedUserDto {
+fun AuthenticatedUserModel.toAuthenticatedUserDto(): AuthenticatedUserDto {
     return AuthenticatedUserDto(
         user = user.toUserDto(),
         accessToken = accessToken,
@@ -13,7 +13,7 @@ fun AuthenticatedUser.toAuthenticatedUserDto(): AuthenticatedUserDto {
     )
 }
 
-fun User.toUserDto(): UserDto {
+fun UserModel.toUserDto(): UserDto {
     return UserDto(
         id = id,
         email = email,

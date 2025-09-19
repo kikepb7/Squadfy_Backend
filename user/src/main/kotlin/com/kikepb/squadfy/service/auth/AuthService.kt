@@ -1,11 +1,8 @@
 package com.kikepb.squadfy.service.auth
 
-import com.kikepb.squadfy.domain.exception.InvalidCredentialsException
-import com.kikepb.squadfy.domain.exception.InvalidTokenException
-import com.kikepb.squadfy.domain.exception.UserAlreadyExistsException
-import com.kikepb.squadfy.domain.exception.UserNotFoundException
-import com.kikepb.squadfy.domain.model.AuthenticatedUser
-import com.kikepb.squadfy.domain.model.User
+import com.kikepb.squadfy.domain.exception.*
+import com.kikepb.squadfy.domain.model.AuthenticatedUserModel
+import com.kikepb.squadfy.domain.model.UserModel
 import com.kikepb.squadfy.domain.model.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.RefreshTokenEntity
 import com.kikepb.squadfy.infrastructure.database.entities.UserEntity
@@ -22,40 +19,43 @@ import java.util.Base64
 
 @Service
 class AuthService(
-    private val userRepository: UserRepository,
-    private val passwordEncoded: PasswordEncoded,
     private val jwtService: JwtService,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val passwordEncoded: PasswordEncoded,
+    private val userRepository: UserRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val emailVerificationService: EmailVerificationService
 ) {
 
-    fun register(email: String, username: String, password: String): User {
+    @Transactional
+    fun register(email: String, username: String, password: String): UserModel {
+        val trimmedEmail = email.trim()
+
         val user = userRepository.findByEmailOrUsername(
-            email = email.trim(),
+            email = trimmedEmail,
             username = username.trim()
         )
 
         if (user != null) throw UserAlreadyExistsException()
 
-        val savedUser = userRepository.save(
+        val savedUser = userRepository.saveAndFlush(
             UserEntity(
-                email = email.trim(),
+                email = trimmedEmail,
                 username = username.trim(),
                 hashedPassword = passwordEncoded.encode(password)
             )
         ).toUser()
 
+        val token = emailVerificationService.createVerificationToken(email = trimmedEmail)
+
         return savedUser
     }
 
-    fun login(email: String, password: String): AuthenticatedUser {
+    fun login(email: String, password: String): AuthenticatedUserModel {
         val user = userRepository.findByEmail(email = email.trim())
             ?: throw InvalidCredentialsException()
 
-        if (!passwordEncoded.matches(password, user.hashedPassword)) {
-            throw InvalidCredentialsException()
-        }
-
-        // TODO: Check for verified email
+        if (!passwordEncoded.matches(password, user.hashedPassword)) throw InvalidCredentialsException()
+        if (!user.hasVerifiedEmail) throw EmailNotVerifiedException()
 
         return user.id?.let { userId ->
             val accessToken = jwtService.generateAccessToken(userId = userId)
@@ -63,7 +63,7 @@ class AuthService(
 
             storeRefreshToken(userId = userId, token = refreshToken)
 
-            AuthenticatedUser(
+            AuthenticatedUserModel(
                 user = user.toUser(),
                 accessToken = accessToken,
                 refreshToken = refreshToken
@@ -72,7 +72,7 @@ class AuthService(
     }
 
     @Transactional
-    fun refresh(refreshToken: String): AuthenticatedUser {
+    fun refresh(refreshToken: String): AuthenticatedUserModel {
         if (!jwtService.validateRefreshToken(token = refreshToken)) {
             throw InvalidTokenException(
                 message = "Invalid refresh token"
@@ -101,7 +101,7 @@ class AuthService(
 
             storeRefreshToken(userId = userId, token = newRefreshToken)
 
-            AuthenticatedUser(
+            AuthenticatedUserModel(
                 user = user.toUser(),
                 accessToken = newAccessToken,
                 refreshToken = newRefreshToken

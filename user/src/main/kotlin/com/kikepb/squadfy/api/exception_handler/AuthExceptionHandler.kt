@@ -1,9 +1,6 @@
 package com.kikepb.squadfy.api.exception_handler
 
-import com.kikepb.squadfy.domain.exception.InvalidCredentialsException
-import com.kikepb.squadfy.domain.exception.InvalidTokenException
-import com.kikepb.squadfy.domain.exception.UserAlreadyExistsException
-import com.kikepb.squadfy.domain.exception.UserNotFoundException
+import com.kikepb.squadfy.domain.exception.*
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -39,6 +36,13 @@ class AuthExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     fun onInvalidCredentials(e: InvalidCredentialsException) = mapOf(
         "code" to "INVALID_CREDENTIALS",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(EmailNotVerifiedException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun onEmailNotVerified(e: EmailNotVerifiedException) = mapOf(
+        "code" to "EMAIL_NOT_VERIFIED",
         "message" to e.message
     )
 
