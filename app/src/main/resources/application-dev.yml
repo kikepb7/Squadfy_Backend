@@ -8,3 +8,8 @@ jwt:
 
 nginx:
   require-proxy: false
+
+squadfy:
+  rate-limit:
+    ip:
+      apply-limit: false
