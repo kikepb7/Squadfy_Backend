@@ -9,6 +9,7 @@ import com.kikepb.squadfy.service.auth.EmailVerificationService
 import com.kikepb.squadfy.service.auth.PasswordResetService
 import jakarta.validation.Valid
 import com.kikepb.squadfy.api.config.IpRateLimit
+import com.kikepb.squadfy.api.util.requestUserId
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -63,6 +64,11 @@ class AuthController(
         ).toAuthenticatedUserDto()
     }
 
+    @PostMapping("/logout")
+    fun logout(@RequestBody body: RefreshRequest) {
+        authService.logout(refreshToken = body.refreshToken)
+    }
+
     @PostMapping("/resend-verification")
     @IpRateLimit(
         requests = 10,
@@ -100,6 +106,10 @@ class AuthController(
 
     @PostMapping("/change-password")
     fun changePassword(@Valid @RequestBody body: ChangePasswordRequest) {
-        // TODO: Extract request user ID and call service
+        passwordResetService.changePassword(
+            userId = requestUserId,
+            oldPassword = body.oldPassword,
+            newPassword = body.newPassword
+        )
     }
 }

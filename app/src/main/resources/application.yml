@@ -46,6 +46,9 @@ jwt:
   expiration-minutes: 15
 
 squadfy:
+  rate-limit:
+    ip:
+      apply-limit: false
   email:
     verification:
       expiry-hours: 24
