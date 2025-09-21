@@ -2,6 +2,15 @@ spring:
   application:
     name: squadfy
 
+  data:
+    redis:
+      host: "redis-18199.crce202.eu-west-3-1.ec2.redns.redis-cloud.com"
+      password: ${REDIS_PASSWORD}
+      username: "default"
+      port: 18199
+      connect-timeout: 5000ms
+      timeout: 2000ms
+
   datasource:
     url: jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.whuvrfyzegghgckbciuz

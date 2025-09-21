@@ -3,6 +3,7 @@ package com.kikepb.squadfy.api.controller
 import com.kikepb.squadfy.api.dto.*
 import com.kikepb.squadfy.api.mappers.toAuthenticatedUserDto
 import com.kikepb.squadfy.api.mappers.toUserDto
+import com.kikepb.squadfy.infrastructure.rate_limiting.EmailRateLimiter
 import com.kikepb.squadfy.service.auth.AuthService
 import com.kikepb.squadfy.service.auth.EmailVerificationService
 import com.kikepb.squadfy.service.auth.PasswordResetService
@@ -17,7 +18,8 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
-    private val passwordResetService: PasswordResetService
+    private val passwordResetService: PasswordResetService,
+    private val emailRateLimiter: EmailRateLimiter
 ) {
 
     @PostMapping("/register")
@@ -42,6 +44,13 @@ class AuthController(
         return authService.refresh(
             refreshToken = body.refreshToken
         ).toAuthenticatedUserDto()
+    }
+
+    @PostMapping("/resend-verification")
+    fun resendVerification(@Valid @RequestBody body: EmailRequest) {
+        emailRateLimiter.withRateLimit(email = body.email) {
+            emailVerificationService.resendVerificationEmail(email = body.email)
+        }
     }
 
     @GetMapping("/verify")

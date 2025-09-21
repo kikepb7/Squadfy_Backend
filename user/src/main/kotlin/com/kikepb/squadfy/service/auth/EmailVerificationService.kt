@@ -22,6 +22,10 @@ class EmailVerificationService(
     @param:Value("\${squadfy.email.verification.expiry-hours}")private val expiryHours: Long
 ) {
 
+    fun resendVerificationEmail(email: String) {
+        // TODO: Trigger resend
+    }
+
     @Transactional
     fun createVerificationToken(email: String): EmailVerificationTokenModel {
         val userEntity = userRepository.findByEmail(email = email)

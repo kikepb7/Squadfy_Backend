@@ -53,6 +53,13 @@ class AuthExceptionHandler {
         "message" to e.message
     )
 
+    @ExceptionHandler(RateLimitException::class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    fun onRateLimitExceeded(e: RateLimitException) = mapOf(
+        "code" to "RATE_LIMIT_EXCEEDED",
+        "message" to e.message
+    )
+
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun onValidationException(e: MethodArgumentNotValidException): ResponseEntity<Map<String, Any>> {
         val errors = e.bindingResult.allErrors.map {
