@@ -1,9 +1,11 @@
 package com.kikepb.squadfy.service.auth
 
+import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.exception.*
 import com.kikepb.squadfy.domain.model.AuthenticatedUserModel
 import com.kikepb.squadfy.domain.model.UserModel
 import com.kikepb.squadfy.domain.model.UserId
+import com.kikepb.squadfy.infra.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.RefreshTokenEntity
 import com.kikepb.squadfy.infrastructure.database.entities.UserEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toUser
@@ -23,7 +25,8 @@ class AuthService(
     private val passwordEncoded: PasswordEncoded,
     private val userRepository: UserRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val emailVerificationService: EmailVerificationService
+    private val emailVerificationService: EmailVerificationService,
+    private val eventPublisher: EventPublisher
 ) {
 
     @Transactional
@@ -46,6 +49,15 @@ class AuthService(
         ).toUser()
 
         val token = emailVerificationService.createVerificationToken(email = trimmedEmail)
+
+        eventPublisher.publish(
+            event = UserEvent.Created(
+                userId = savedUser.id,
+                email = savedUser.email,
+                username = savedUser.username,
+                verificationToken = token.token
+            )
+        )
 
         return savedUser
     }

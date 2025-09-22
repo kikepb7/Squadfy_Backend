@@ -1,8 +1,10 @@
 package com.kikepb.squadfy.service.auth
 
+import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.exception.InvalidTokenException
 import com.kikepb.squadfy.domain.exception.UserNotFoundException
 import com.kikepb.squadfy.domain.model.EmailVerificationTokenModel
+import com.kikepb.squadfy.infra.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.EmailVerificationTokenEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toEmailVerificationToken
 import com.kikepb.squadfy.infrastructure.database.mappers.toUser
@@ -19,11 +21,24 @@ import java.time.temporal.ChronoUnit
 class EmailVerificationService(
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private val userRepository: UserRepository,
-    @param:Value("\${squadfy.email.verification.expiry-hours}")private val expiryHours: Long
+    @param:Value("\${squadfy.email.verification.expiry-hours}")private val expiryHours: Long,
+    private val eventPublisher: EventPublisher
 ) {
 
+    @Transactional
     fun resendVerificationEmail(email: String) {
-        // TODO: Trigger resend
+        val token = createVerificationToken(email = email)
+
+        if (token.user.hasEmailVerified) return
+
+        eventPublisher.publish(
+            event = UserEvent.RequestResendVerification(
+                userId = token.user.id,
+                email = token.user.email,
+                username = token.user.username,
+                verificationToken = token.token
+            )
+        )
     }
 
     @Transactional
