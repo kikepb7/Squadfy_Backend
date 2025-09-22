@@ -1,10 +1,12 @@
 package com.kikepb.squadfy.service.auth
 
+import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.exception.InvalidCredentialsException
 import com.kikepb.squadfy.domain.exception.InvalidTokenException
 import com.kikepb.squadfy.domain.exception.SamePasswordException
 import com.kikepb.squadfy.domain.exception.UserNotFoundException
 import com.kikepb.squadfy.domain.model.UserId
+import com.kikepb.squadfy.infra.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.PasswordResetTokenEntity
 import com.kikepb.squadfy.infrastructure.database.repositories.PasswordResetTokenRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.RefreshTokenRepository
@@ -24,7 +26,9 @@ class PasswordResetService(
     private val passwordResetTokenRepository: PasswordResetTokenRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoded: PasswordEncoded,
-    @param:Value("\${squadfy.email.reset-password.expiry-minutes}")private val expiryMinutes: Long
+    @param:Value("\${squadfy.email.reset-password.expiry-minutes}")
+    private val expiryMinutes: Long,
+    private val eventPublisher: EventPublisher
 
 ) {
     @Transactional
@@ -39,8 +43,17 @@ class PasswordResetService(
         )
         passwordResetTokenRepository.save(token)
 
-        // TODO: Inform notification service about password reset trigger to send email
-
+        user.id?.let { userId ->
+            eventPublisher.publish(
+                UserEvent.RequestResetPassword(
+                    userId = userId,
+                    email = user.email,
+                    username = user.username,
+                    passwordResetToken = token.token,
+                    expiresInMinutes = expiryMinutes
+                )
+            )
+        }
     }
 
     @Transactional

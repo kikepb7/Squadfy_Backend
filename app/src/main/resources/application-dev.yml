@@ -2,6 +2,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  mail:
+    host: smtp.mailgun.org
+    username: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
 
 jwt:
   expiration-minutes: 1000
@@ -10,6 +13,8 @@ nginx:
   require-proxy: false
 
 squadfy:
+  email:
+    url: "http://localhost:8080"
   rate-limit:
     ip:
       apply-limit: false

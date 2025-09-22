@@ -16,6 +16,7 @@ dependencies {
 	implementation(libs.spring.boot.starter.security)
 
 	implementation(libs.spring.boot.starter.data.jpa)
+	implementation(libs.spring.boot.starter.mail)
 	implementation(libs.spring.boot.starter.redis)
 	implementation(libs.spring.boot.starter.amqp)
 	runtimeOnly(libs.postgresql)

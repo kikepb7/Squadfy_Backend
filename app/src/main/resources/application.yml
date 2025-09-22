@@ -41,6 +41,18 @@ spring:
         format_sql: true
         show_sql: true
 
+  mail:
+    host: smtp.mailgun.org
+    username: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
+    port: 587
+    password: ${MAILGUN_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   rabbitmq:
     host: seal.lmq.cloudamqp.com
     password: ${RABBITMQ_PASSWORD}
@@ -71,6 +83,7 @@ squadfy:
     ip:
       apply-limit: false
   email:
+    from: enriquepalmadev@gmail.com
     verification:
       expiry-hours: 24
     reset-password:
