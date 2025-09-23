@@ -10,14 +10,11 @@ import com.kikepb.squadfy.service.auth.PasswordResetService
 import jakarta.validation.Valid
 import com.kikepb.squadfy.api.config.IpRateLimit
 import com.kikepb.squadfy.api.util.requestUserId
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.concurrent.TimeUnit
 
-@RestController("/api/auth")
+@RestController
+@RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,

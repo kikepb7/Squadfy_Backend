@@ -14,7 +14,7 @@ nginx:
 
 squadfy:
   email:
-    url: "https://.com"
+    url: "https://www.kikepb.com"
   rate-limit:
     ip:
       apply-limit: true

@@ -83,7 +83,9 @@ squadfy:
     ip:
       apply-limit: false
   email:
-    from: enriquepalmadev@gmail.com
+    from: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
+    to: freyiloijeiyi-4579@yopmail.com
+    url: "http://localhost:8080"
     verification:
       expiry-hours: 24
     reset-password:

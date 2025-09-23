@@ -14,9 +14,9 @@ import java.time.Duration
 class EmailService(
     private val javaMailSender: JavaMailSender,
     private val emailTemplateService: EmailTemplateService,
-    @param:Value("\${squadfy.email.from")
+    @param:Value("\${squadfy.email.from}")
     private val emailFrom: String,
-    @param:Value("\${squadfy.email.url")
+    @param:Value("\${squadfy.email.url}")
     private val baseUrl: String
 ) {
 
