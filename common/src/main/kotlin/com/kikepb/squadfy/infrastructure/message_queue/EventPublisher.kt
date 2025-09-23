@@ -1,4 +1,4 @@
-package com.kikepb.squadfy.infra.message_queue
+package com.kikepb.squadfy.infrastructure.message_queue
 
 import com.kikepb.squadfy.domain.events.SquadfyEvent
 import org.slf4j.LoggerFactory

@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package com.kikepb.squadfy.infra.message_queue
+package com.kikepb.squadfy.infrastructure.message_queue
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator

@@ -4,10 +4,10 @@ import com.kikepb.squadfy.domain.type.ChatId
 import com.kikepb.squadfy.domain.type.ChatMessageId
 import java.time.Instant
 
-data class ChatMessage(
+data class ChatMessageModel(
     val id: ChatMessageId,
     val chatId: ChatId,
-    val sender: ChatParticipant,
+    val sender: ChatParticipantModel,
     val content: String,
     val createdAt: Instant
 )

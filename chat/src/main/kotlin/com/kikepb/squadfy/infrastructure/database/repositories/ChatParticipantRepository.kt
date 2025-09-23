@@ -1,13 +1,13 @@
-package com.kikepb.squadfy.infra.database.repositories
+package com.kikepb.squadfy.infrastructure.database.repositories
 
 import com.kikepb.squadfy.domain.type.UserId
-import com.kikepb.squadfy.infra.database.entities.ChatParticipantEntity
+import com.kikepb.squadfy.infrastructure.database.entities.ChatParticipantEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 
 interface ChatParticipantRepository: JpaRepository<ChatParticipantEntity, UserId> {
 
-    fun findByUserIdIn(userIds: List<UserId>): Set<ChatParticipantEntity>
+    fun findByUserIdIn(userIds: Set<UserId>): Set<ChatParticipantEntity>
 
     @Query("""
        SELECT p

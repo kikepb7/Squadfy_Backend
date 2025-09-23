@@ -4,7 +4,7 @@ import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.exception.InvalidTokenException
 import com.kikepb.squadfy.domain.exception.UserNotFoundException
 import com.kikepb.squadfy.domain.model.EmailVerificationTokenModel
-import com.kikepb.squadfy.infra.message_queue.EventPublisher
+import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.EmailVerificationTokenEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toEmailVerificationToken
 import com.kikepb.squadfy.infrastructure.database.mappers.toUser

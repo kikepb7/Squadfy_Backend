@@ -6,7 +6,7 @@ import com.kikepb.squadfy.domain.exception.InvalidTokenException
 import com.kikepb.squadfy.domain.exception.SamePasswordException
 import com.kikepb.squadfy.domain.exception.UserNotFoundException
 import com.kikepb.squadfy.domain.model.UserId
-import com.kikepb.squadfy.infra.message_queue.EventPublisher
+import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.PasswordResetTokenEntity
 import com.kikepb.squadfy.infrastructure.database.repositories.PasswordResetTokenRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.RefreshTokenRepository

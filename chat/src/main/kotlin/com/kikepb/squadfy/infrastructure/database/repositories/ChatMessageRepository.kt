@@ -1,8 +1,8 @@
-package com.kikepb.squadfy.infra.database.repositories
+package com.kikepb.squadfy.infrastructure.database.repositories
 
 import com.kikepb.squadfy.domain.type.ChatId
 import com.kikepb.squadfy.domain.type.ChatMessageId
-import com.kikepb.squadfy.infra.database.entities.ChatMessageEntity
+import com.kikepb.squadfy.infrastructure.database.entities.ChatMessageEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice

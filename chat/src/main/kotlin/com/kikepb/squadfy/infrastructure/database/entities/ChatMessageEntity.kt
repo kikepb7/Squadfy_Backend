@@ -1,4 +1,4 @@
-package com.kikepb.squadfy.infra.database.entities
+package com.kikepb.squadfy.infrastructure.database.entities
 
 import com.kikepb.squadfy.domain.type.ChatId
 import com.kikepb.squadfy.domain.type.ChatMessageId
