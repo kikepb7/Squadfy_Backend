@@ -19,6 +19,9 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.postgresql)
 
+    implementation(libs.spring.boot.starter.validation)
+    implementation(libs.jackson.datatype)
+
     testImplementation(kotlin("test"))
 }
 

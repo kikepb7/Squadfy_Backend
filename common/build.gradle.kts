@@ -19,6 +19,8 @@ dependencies {
     implementation(libs.spring.boot.starter.amqp)
     implementation(libs.jackson.datatype)
 
+    implementation(libs.spring.boot.starter.security)
+
     testImplementation(kotlin("test"))
 }
 
