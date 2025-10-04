@@ -4,7 +4,6 @@ import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.events.user.UserEvent.Created
 import com.kikepb.squadfy.domain.events.user.UserEvent.RequestResendVerification
 import com.kikepb.squadfy.domain.events.user.UserEvent.RequestResetPassword
-import com.kikepb.squadfy.domain.events.user.UserEvent.Verified
 import com.kikepb.squadfy.service.EmailService
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.stereotype.Component
@@ -44,7 +43,6 @@ class NotificationUserEventListener(private val emailService: EmailService) {
 
                 )
             }
-            is Verified -> println("User verified!")
             else -> Unit
         }
     }

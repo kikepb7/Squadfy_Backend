@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.kikepb.squadfy.domain.events.SquadfyEvent
+import com.kikepb.squadfy.domain.events.chat.ChatEventConstant
 import com.kikepb.squadfy.domain.events.user.UserEventConstants
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
@@ -72,8 +73,21 @@ class RabbitMqConfig {
     )
 
     @Bean
+    fun chatExchange() = TopicExchange(
+        ChatEventConstant.CHAT_EXCHANGE,
+        true,
+        false
+    )
+
+    @Bean
     fun notificationUserEventQueue() = Queue(
         MessageQueues.NOTIFICATION_USER_EVENTS,
+        true
+    )
+
+    @Bean
+    fun chatUserEventQueue() = Queue(
+        MessageQueues.CHAT_USER_EVENTS,
         true
     )
 
@@ -81,6 +95,14 @@ class RabbitMqConfig {
     fun notificationUserEventsBinding(notificationUserEventQueue: Queue, userExchange: TopicExchange): Binding {
         return BindingBuilder
             .bind(notificationUserEventQueue)
+            .to(userExchange)
+            .with("user.*")
+    }
+
+    @Bean
+    fun chatUserEventsBinding(chatUserEventQueue: Queue, userExchange: TopicExchange): Binding {
+        return BindingBuilder
+            .bind(chatUserEventQueue)
             .to(userExchange)
             .with("user.*")
     }
