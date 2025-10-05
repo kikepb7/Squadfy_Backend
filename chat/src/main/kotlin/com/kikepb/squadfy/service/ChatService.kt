@@ -1,5 +1,7 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.api.dto.ChatMessageDto
+import com.kikepb.squadfy.api.mappers.toChatMessageDto
 import com.kikepb.squadfy.domain.exception.ChatNotFoundException
 import com.kikepb.squadfy.domain.exception.ChatParticipantNotFoundException
 import com.kikepb.squadfy.domain.exception.ForbiddenException
@@ -14,10 +16,11 @@ import com.kikepb.squadfy.infrastructure.database.mappers.toChatModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatMessageRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatParticipantRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.client.HttpClientErrorException
+import java.time.Instant
 
 @Service
 class ChatService(
@@ -90,6 +93,14 @@ class ChatService(
                 this.participants = chat.participants - participant
             }
         )
+    }
+
+    fun getChatMessage(chatId: ChatId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
+        return chatMessageRepository
+            .findByChatIdBefore(chatId = chatId, before = before ?: Instant.now(), pageable = PageRequest.of(0, pageSize))
+            .content
+            .asReversed()
+            .map { it.toChatMessageModel().toChatMessageDto() }
     }
 
     private fun lastMessageForChat(chatId: ChatId): ChatMessageModel? {
