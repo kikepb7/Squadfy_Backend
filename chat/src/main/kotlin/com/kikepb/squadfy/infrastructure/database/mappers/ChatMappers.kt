@@ -4,6 +4,7 @@ import com.kikepb.squadfy.domain.model.ChatMessageModel
 import com.kikepb.squadfy.domain.model.ChatModel
 import com.kikepb.squadfy.domain.model.ChatParticipantModel
 import com.kikepb.squadfy.infrastructure.database.entities.ChatEntity
+import com.kikepb.squadfy.infrastructure.database.entities.ChatMessageEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ChatParticipantEntity
 
 fun ChatEntity.toChatModel(lastMessage: ChatMessageModel? = null): ChatModel {
@@ -34,5 +35,15 @@ fun ChatParticipantModel.toChatParticipantEntity(): ChatParticipantEntity {
         username = username,
         email = email,
         profilePictureUrl = profilePictureUrl
+    )
+}
+
+fun ChatMessageEntity.toChatMessageModel(): ChatMessageModel {
+    return ChatMessageModel(
+        id = requireNotNull(id),
+        chatId = chatId,
+        sender = sender.toChatParticipantModel(),
+        content = content,
+        createdAt = createdAt
     )
 }
