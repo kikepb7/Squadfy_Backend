@@ -1,4 +1,4 @@
-package com.kikepb.squadfy.security
+package com.kikepb.squadfy.api.security
 
 import com.kikepb.squadfy.api.config.JwtAuthFilter
 import jakarta.servlet.DispatcherType

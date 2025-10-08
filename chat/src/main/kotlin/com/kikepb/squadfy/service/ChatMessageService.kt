@@ -17,6 +17,7 @@ import com.kikepb.squadfy.infrastructure.database.repositories.ChatParticipantRe
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatRepository
 import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import jakarta.transaction.Transactional
+import org.springframework.cache.annotation.CacheEvict
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -31,6 +32,10 @@ class ChatMessageService(
 ) {
 
     @Transactional
+    @CacheEvict(
+        value = ["messages"],
+        key = "#chatId",
+    )
     fun sendMessage(chatId: ChatId, senderId: UserId, content: String, messageId: ChatMessageId? = null): ChatMessageModel {
         val chat = chatRepository.findChatById(id = chatId, userId = senderId)
             ?: throw ChatNotFoundException()
@@ -75,5 +80,15 @@ class ChatMessageService(
                 messageId = messageId
             )
         )
+
+        evictMessagesCache(chatId = message.chatId)
+    }
+
+    @CacheEvict(
+        value = ["messages"],
+        key = "#chatId",
+    )
+    fun evictMessagesCache(chatId: ChatId) {
+        // NO-OP: Let Spring handle the cache evict
     }
 }

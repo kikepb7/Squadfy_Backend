@@ -18,6 +18,7 @@ import com.kikepb.squadfy.infrastructure.database.mappers.toChatModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatMessageRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatParticipantRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatRepository
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
@@ -113,6 +114,12 @@ class ChatService(
         )
     }
 
+    @Cacheable(
+        value = ["messages"],
+        key = "#chatId",
+        condition = "#before == null && #pageSize <= 50",
+        sync = true
+    )
     fun getChatMessage(chatId: ChatId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
         return chatMessageRepository
             .findByChatIdBefore(chatId = chatId, before = before ?: Instant.now(), pageable = PageRequest.of(0, pageSize))
