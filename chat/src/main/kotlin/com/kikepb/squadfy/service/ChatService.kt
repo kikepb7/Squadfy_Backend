@@ -120,7 +120,7 @@ class ChatService(
         condition = "#before == null && #pageSize <= 50",
         sync = true
     )
-    fun getChatMessage(chatId: ChatId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
+    fun getChatMessages(chatId: ChatId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
         return chatMessageRepository
             .findByChatIdBefore(chatId = chatId, before = before ?: Instant.now(), pageable = PageRequest.of(0, pageSize))
             .content
@@ -133,5 +133,22 @@ class ChatService(
             .findLatestMessagesByChatIds(chatIds = setOf(chatId))
             .firstOrNull()
             ?.toChatMessageModel()
+    }
+
+    fun getChatById(chatId: ChatId, requestUserId: UserId): ChatModel? {
+        return chatRepository.findChatById(id = chatId, userId = requestUserId)
+            ?.toChatModel(lastMessage = lastMessageForChat(chatId = chatId))
+    }
+
+    fun findChatByUser(userId: UserId): List<ChatModel> {
+        val chatEntities = chatRepository.findAllByUserId(userId = userId)
+        val chatIds = chatEntities.mapNotNull { it.id }
+        val latestMessages = chatMessageRepository
+            .findLatestMessagesByChatIds(chatIds = chatIds.toSet())
+            .associateBy { it.chatId }
+
+        return chatEntities
+            .map { it.toChatModel(lastMessage = latestMessages[it.id]?.toChatMessageModel()) }
+            .sortedBy { it.lastActivityAt }
     }
 }
