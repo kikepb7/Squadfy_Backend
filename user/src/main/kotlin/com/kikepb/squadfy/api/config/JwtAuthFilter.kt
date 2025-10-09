@@ -1,6 +1,6 @@
 package com.kikepb.squadfy.api.config
 
-import com.kikepb.squadfy.service.auth.JwtService
+import com.kikepb.squadfy.service.JwtService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

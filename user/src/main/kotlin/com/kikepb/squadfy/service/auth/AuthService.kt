@@ -12,6 +12,7 @@ import com.kikepb.squadfy.infrastructure.database.mappers.toUser
 import com.kikepb.squadfy.infrastructure.database.repositories.RefreshTokenRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.UserRepository
 import com.kikepb.squadfy.infrastructure.security.PasswordEncoded
+import com.kikepb.squadfy.service.JwtService
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
