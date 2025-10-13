@@ -18,3 +18,5 @@ squadfy:
   rate-limit:
     ip:
       apply-limit: true
+  web-socket:
+    allowed-origin: "http://squadfy.com"

@@ -90,6 +90,8 @@ squadfy:
       expiry-hours: 24
     reset-password:
       expiry-minutes: 30
+  web-socket:
+    allowed-origin: "http://localhost:8080"
 
 nginx:
   trusted-ips:

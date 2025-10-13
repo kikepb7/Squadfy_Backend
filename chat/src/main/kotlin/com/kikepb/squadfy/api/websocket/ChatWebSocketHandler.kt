@@ -14,6 +14,7 @@ import com.kikepb.squadfy.service.JwtService
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 import org.springframework.web.socket.CloseStatus
@@ -29,6 +30,7 @@ import kotlin.collections.mutableSetOf
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
+@Component
 class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val chatMessageService: ChatMessageService,
@@ -91,6 +93,35 @@ class ChatWebSocketHandler(
         }
 
         logger.info("Websocket connection established for user $userId")
+    }
+
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        connectionLock.write {
+            sessions.remove(session.id)?.let { userSession ->
+                val userId = userSession.userId
+
+                userToSessions.compute(userId) { _, sessions ->
+                    sessions
+                        ?.apply { remove(session.id) }
+                        ?.takeIf { it.isNotEmpty() }
+                }
+
+                userChatIds[userId]?.forEach { chatId ->
+                    chatToSessions.compute(chatId) { _, sessions ->
+                        sessions
+                            ?.apply { remove(session.id) }
+                            ?.takeIf { it.isNotEmpty() }
+                    }
+                }
+
+                logger.info("Websocket session closed for user $userId")
+            }
+        }
+    }
+
+    override fun handleTransportError(session: WebSocketSession, exception: Throwable) {
+        logger.error("Transport error for session ${session.id}", exception)
+        session.close(CloseStatus.SERVER_ERROR.withReason("Transport error"))
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {

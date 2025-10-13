@@ -52,9 +52,7 @@ class ChatMessageEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "sender_id",
-        nullable = false,
-        insertable = false,
-        updatable = false
+        nullable = false
     )
     var sender: ChatParticipantEntity,
     @CreationTimestamp
