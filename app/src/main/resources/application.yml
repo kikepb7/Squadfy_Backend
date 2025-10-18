@@ -103,3 +103,6 @@ nginx:
 supabase:
   url: "https://aws-1-eu-west-3.pooler.supabase.com"
   service-key: ${SUPABASE_SERVICE_KEY}
+
+firebase:
+  credentials-path: "classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json"

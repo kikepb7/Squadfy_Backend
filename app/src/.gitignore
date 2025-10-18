@@ -38,3 +38,6 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+main/resources/firebase-credentials
+src/main/resources/firebase-credentials
