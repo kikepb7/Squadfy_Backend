@@ -11,8 +11,12 @@ import com.kikepb.squadfy.infrastructure.mappers.toDeviceTokenModel
 import com.kikepb.squadfy.infrastructure.mappers.toPlatformEntity
 import com.kikepb.squadfy.infrastructure.push_notification.FirebasePushNotificationService
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.ConcurrentSkipListMap
 
 @Service
 class PushNotificationService(
@@ -20,7 +24,34 @@ class PushNotificationService(
     private val firebasePushNotificationService: FirebasePushNotificationService
 ) {
 
+    companion object {
+        private val RETRY_DELAYS_SECONDS = listOf(30L, 60L, 120L, 300L, 600L)
+        const val MAX_RETRY_AGE_MINUTES = 30L
+    }
+
+    private val retryQueue = ConcurrentSkipListMap<Long, MutableList<RetryData>>()
     private val logger = LoggerFactory.getLogger(PushNotificationService::class.java)
+
+    private fun scheduleRetry(notification: PushNotificationModel, attempt: Int) {
+        val delay = RETRY_DELAYS_SECONDS.getOrElse(attempt - 1) {
+            RETRY_DELAYS_SECONDS.last()
+        }
+
+        val executeAt = Instant.now().plusSeconds(delay)
+        val executeAtMillis = executeAt.toEpochMilli()
+
+        val retryData = RetryData(
+            notification = notification,
+            attempt = attempt,
+            createdAt = Instant.now()
+        )
+
+        retryQueue.compute(executeAtMillis) { _, retries ->
+            (retries ?: mutableListOf()).apply { add(retryData) }
+        }
+
+        logger.info("Scheduled retry $attempt for ${notification.id} in $delay seconds ")
+    }
 
     @Transactional
     fun registerDevice(userId: UserId, token: String, platform: DeviceTokenModel.Platform): DeviceTokenModel {
@@ -81,6 +112,61 @@ class PushNotificationService(
             )
         )
 
-        firebasePushNotificationService.sendNotification(notification = notification)
+        sendWithRetry(notification = notification)
     }
+
+    fun sendWithRetry(notification: PushNotificationModel, attempt: Int = 0) {
+        val result = firebasePushNotificationService.sendNotification(notification = notification)
+
+        result.permanentFailures.forEach {
+            deviceTokenRepository.deleteByToken(token = it.token)
+        }
+
+        if (result.temporaryFailures.isNotEmpty() && attempt < RETRY_DELAYS_SECONDS.size) {
+            val retryNotification = notification.copy(
+                recipients = result.temporaryFailures
+            )
+
+            scheduleRetry(retryNotification, attempt + 1)
+        }
+
+        if (result.succeeded.isNotEmpty()) logger.info("Successfully sent notification to ${result.succeeded.size} devices")
+    }
+
+    @Scheduled(fixedDelay = 15_000L)
+    fun processRetries() {
+        val now = Instant.now()
+        val nowMillis = now.toEpochMilli()
+        val toProcess = retryQueue.headMap(nowMillis, true)
+
+        if (toProcess.isEmpty()) return
+
+        val entries = toProcess.entries.toList()
+        entries.forEach { (timeMillis, retries) ->
+            retryQueue.remove(timeMillis)
+
+            retries.forEach { retry ->
+                try {
+                    val age = Duration.between(retry.createdAt, now)
+                    if (age.toMinutes() > MAX_RETRY_AGE_MINUTES) {
+                        logger.warn("Dropping old retry (${age.toMinutes()} old")
+                        return@forEach
+                    }
+
+                    sendWithRetry(
+                        notification = retry.notification,
+                        attempt = retry.attempt
+                    )
+                } catch (e: Exception) {
+                    logger.warn("Error processing retry ${retry.notification.id}", e)
+                }
+            }
+        }
+    }
+
+    private data class RetryData(
+        val notification: PushNotificationModel,
+        val attempt: Int,
+        val createdAt: Instant
+    )
 }

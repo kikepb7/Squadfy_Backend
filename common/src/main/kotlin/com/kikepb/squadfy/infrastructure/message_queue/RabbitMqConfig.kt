@@ -17,6 +17,7 @@ import org.springframework.amqp.core.TopicExchange
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.support.converter.Jackson2JavaTypeMapper
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.annotation.EnableTransactionManagement
@@ -86,6 +87,12 @@ class RabbitMqConfig {
     )
 
     @Bean
+    fun notificationChatEventsQueue() = Queue(
+        MessageQueues.NOTIFICATION_CHAT_EVENTS,
+        true
+    )
+
+    @Bean
     fun chatUserEventQueue() = Queue(
         MessageQueues.CHAT_USER_EVENTS,
         true
@@ -97,6 +104,14 @@ class RabbitMqConfig {
             .bind(notificationUserEventQueue)
             .to(userExchange)
             .with("user.*")
+    }
+
+    @Bean
+    fun notificationChatEventsBinding(@Qualifier("notificationChatEventsQueue") notificationChatEventQueue: Queue, chatExchange: TopicExchange): Binding {
+        return BindingBuilder
+            .bind(notificationChatEventQueue)
+            .to(chatExchange)
+            .with(ChatEventConstant.CHAT_NEW_MESSAGE)
     }
 
     @Bean
