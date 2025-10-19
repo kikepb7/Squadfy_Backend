@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class FirebasePushNotificationService(
-    @param:Value("\${firebase.credentials-path")
+    @param:Value("\${firebase.credentials-path}")
     private val credentialsPath: String,
     private val resourceLoader: ResourceLoader
 ) {
