@@ -2,6 +2,7 @@ package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.api.dto.ChatMessageDto
 import com.kikepb.squadfy.api.mappers.toChatMessageDto
+import com.kikepb.squadfy.domain.event.ChatCreatedEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantLeftEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantsJoinedEvent
 import com.kikepb.squadfy.domain.exception.ChatNotFoundException
@@ -44,12 +45,19 @@ class ChatService(
         val creator = chatParticipantRepository.findByIdOrNull(id = creatorId)
             ?: throw ChatParticipantNotFoundException(id = creatorId)
 
-        return chatRepository.save(
+        return chatRepository.saveAndFlush(
             ChatEntity(
                 creator = creator,
                 participants = setOf(creator) + otherParticipants
             )
-        ).toChatModel(lastMessage = null)
+        ).toChatModel(lastMessage = null).also { entity ->
+            applicationEventPublisher.publishEvent(
+                ChatCreatedEvent(
+                    chatId = entity.id,
+                    participantIds = entity.participants.map { it.userId }
+                )
+            )
+        }
     }
 
     @Transactional

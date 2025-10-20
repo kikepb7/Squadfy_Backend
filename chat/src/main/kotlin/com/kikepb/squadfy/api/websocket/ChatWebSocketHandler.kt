@@ -3,6 +3,7 @@ package com.kikepb.squadfy.api.websocket
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.kikepb.squadfy.api.dto.websocket.*
 import com.kikepb.squadfy.api.mappers.toChatMessageDto
+import com.kikepb.squadfy.domain.event.ChatCreatedEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantLeftEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantsJoinedEvent
 import com.kikepb.squadfy.domain.event.MessageDeletedEvent
@@ -173,6 +174,94 @@ class ChatWebSocketHandler(
         logger.debug("Received pong from ${session.id}")
     }
 
+    private fun sendError(session: WebSocketSession, error: WebSocketErrorDto) {
+        val webSocketMessage = objectMapper.writeValueAsString(
+            OutgoingWebSocketMessage(
+                type = OutgoingWebSocketMessageType.ERROR,
+                payload = objectMapper.writeValueAsString(error)
+            )
+        )
+
+        try {
+            session.sendMessage(TextMessage(webSocketMessage))
+        } catch (e: Exception) {
+            logger.warn("Couldn't send error message")
+        }
+    }
+
+    private fun broadcastToChat(chatId: ChatId, message: OutgoingWebSocketMessage) {
+        val chatSessions = connectionLock.read {
+            chatToSessions[chatId]?.toList() ?: emptyList()
+        }
+
+        chatSessions.forEach { sessionId ->
+            val userSession = connectionLock.read {
+                sessions[sessionId]
+            } ?: return@forEach
+
+            sendToUser(userId = userSession.userId, message = message)
+        }
+    }
+
+    private fun handleSendMessage(sendMessageDto: SendMessageDto, senderId: UserId) {
+        val userChatIds = connectionLock.read { userChatIds[senderId] } ?: return
+
+        if (sendMessageDto.chatId !in userChatIds) return
+
+        val savedMessage = chatMessageService.sendMessage(
+            chatId = sendMessageDto.chatId,
+            senderId = senderId,
+            content = sendMessageDto.content,
+            messageId = sendMessageDto.messageId
+        )
+
+        broadcastToChat(
+            chatId = sendMessageDto.chatId,
+            message = OutgoingWebSocketMessage(
+                type = OutgoingWebSocketMessageType.NEW_MESSAGE,
+                payload = objectMapper.writeValueAsString(savedMessage.toChatMessageDto())
+            )
+        )
+    }
+
+    private fun sendToUser(userId: UserId, message: OutgoingWebSocketMessage) {
+        val userSessions = connectionLock.read {
+            userToSessions[userId] ?: emptySet()
+        }
+
+        userSessions.forEach { sessionId ->
+            val userSession = connectionLock.read {
+                sessions[sessionId] ?: return@forEach
+            }
+
+            if (userSession.session.isOpen) {
+                try {
+                    val messageJson = objectMapper.writeValueAsString(message)
+                    userSession.session.sendMessage(TextMessage(messageJson))
+                    logger.debug("Sent message to user {}: {}", userId, messageJson)
+                } catch (e: Exception) {
+                    logger.error("Error while sending message to $userId", e)
+                }
+            }
+        }
+    }
+
+    private fun updateChatForUsers(chatId: ChatId, userIds: List<UserId>) {
+        connectionLock.write {
+            userIds.forEach { userId ->
+                userChatIds.compute(userId) { _, chatIds ->
+                    (chatIds ?: mutableSetOf()).apply { add(chatId) }
+                }
+
+                userToSessions[userId]?.forEach { sessionId ->
+                    chatToSessions.compute(chatId) { _, sessions ->
+                        (sessions ?: mutableSetOf()).apply { add(sessionId) }
+                    }
+                }
+            }
+        }
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onDeleteMessage(event: MessageDeletedEvent) {
         broadcastToChat(
@@ -190,33 +279,12 @@ class ChatWebSocketHandler(
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    fun onJoinChat(event: ChatParticipantsJoinedEvent) {
-        connectionLock.write {
-            event.userIds.forEach { userId ->
-                userChatIds.compute(userId) { _, chatIds ->
-                    (chatIds ?: mutableSetOf()).apply { add(event.chatId) }
-                }
+    fun onJoinChat(event: ChatParticipantsJoinedEvent) =
+        updateChatForUsers(chatId = event.chatId, userIds = event.userIds.toList())
 
-                userToSessions[userId]?.forEach { sessionId ->
-                    chatToSessions.compute(event.chatId) { _, sessions ->
-                        (sessions ?: mutableSetOf()).apply { add(sessionId) }
-                    }
-                }
-            }
-        }
-
-        broadcastToChat(
-            chatId = event.chatId,
-            message = OutgoingWebSocketMessage(
-                type = OutgoingWebSocketMessageType.CHAT_PARTICIPANTS_CHANGED,
-                payload = objectMapper.writeValueAsString(
-                    ChatParticipantsChangedDto(
-                        chatId = event.chatId
-                    )
-                )
-            )
-        )
-    }
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onChatCreated(event: ChatCreatedEvent) =
+        updateChatForUsers(chatId = event.chatId, userIds = event.participantIds)
 
     @Scheduled(fixedDelay = PING_INTERVAL_MS)
     fun pingClients() {
@@ -327,78 +395,6 @@ class ChatWebSocketHandler(
                 }
             } catch (e: Exception) {
                 logger.error("Could not send profile picture update to session $sessionId", e)
-            }
-        }
-    }
-
-    private fun sendError(session: WebSocketSession, error: WebSocketErrorDto) {
-        val webSocketMessage = objectMapper.writeValueAsString(
-            OutgoingWebSocketMessage(
-                type = OutgoingWebSocketMessageType.ERROR,
-                payload = objectMapper.writeValueAsString(error)
-            )
-        )
-
-        try {
-            session.sendMessage(TextMessage(webSocketMessage))
-        } catch (e: Exception) {
-            logger.warn("Couldn't send error message")
-        }
-    }
-
-    private fun broadcastToChat(chatId: ChatId, message: OutgoingWebSocketMessage) {
-        val chatSessions = connectionLock.read {
-            chatToSessions[chatId]?.toList() ?: emptyList()
-        }
-
-        chatSessions.forEach { sessionId ->
-            val userSession = connectionLock.read {
-                sessions[sessionId]
-            } ?: return@forEach
-
-            sendToUser(userId = userSession.userId, message = message)
-        }
-    }
-
-    private fun handleSendMessage(sendMessageDto: SendMessageDto, senderId: UserId) {
-        val userChatIds = connectionLock.read { userChatIds[senderId] } ?: return
-
-        if (sendMessageDto.chatId !in userChatIds) return
-
-        val savedMessage = chatMessageService.sendMessage(
-            chatId = sendMessageDto.chatId,
-            senderId = senderId,
-            content = sendMessageDto.content,
-            messageId = sendMessageDto.messageId
-        )
-
-        broadcastToChat(
-            chatId = sendMessageDto.chatId,
-            message = OutgoingWebSocketMessage(
-                type = OutgoingWebSocketMessageType.NEW_MESSAGE,
-                payload = objectMapper.writeValueAsString(savedMessage.toChatMessageDto())
-            )
-        )
-    }
-
-    private fun sendToUser(userId: UserId, message: OutgoingWebSocketMessage) {
-        val userSessions = connectionLock.read {
-            userToSessions[userId] ?: emptySet()
-        }
-
-        userSessions.forEach { sessionId ->
-            val userSession = connectionLock.read {
-                sessions[sessionId] ?: return@forEach
-            }
-
-            if (userSession.session.isOpen) {
-                try {
-                    val messageJson = objectMapper.writeValueAsString(message)
-                    userSession.session.sendMessage(TextMessage(messageJson))
-                    logger.debug("Sent message to user {}: {}", userId, messageJson)
-                } catch (e: Exception) {
-                    logger.error("Error while sending message to $userId", e)
-                }
             }
         }
     }
