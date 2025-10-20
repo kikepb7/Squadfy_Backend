@@ -28,7 +28,11 @@ dependencies {
     runtimeOnly(libs.jwt.impl)
     runtimeOnly(libs.jwt.jackson)
 
+    // Testing
     testImplementation(kotlin("test"))
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.spring.mockk)
 }
 
 tasks.test {
