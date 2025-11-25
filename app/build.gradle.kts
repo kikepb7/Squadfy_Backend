@@ -10,6 +10,7 @@ dependencies {
 	implementation(projects.user)
 	implementation(projects.chat)
 	implementation(projects.notification)
+	implementation(projects.club)
 	implementation(projects.common)
 
 	implementation(libs.kotlin.reflect)
