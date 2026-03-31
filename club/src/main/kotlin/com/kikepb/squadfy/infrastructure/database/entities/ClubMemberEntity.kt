@@ -3,12 +3,16 @@ package com.kikepb.squadfy.infrastructure.database.entities
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
+import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.PLAYER
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
@@ -20,25 +24,55 @@ import java.time.Instant
 @Table(
     name = "club_members",
     schema = "club_service",
+    indexes = [
+        Index(name = "idx_club_members_club_id", columnList = "club_id"),
+        Index(name = "idx_club_members_user_id", columnList = "user_id"),
+        Index(name = "idx_club_members_club_user", columnList = "club_id,user_id", unique = true)
+    ]
 )
 class ClubMemberEntity(
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     var id: ClubMemberId? = null,
+    @Column(name = "club_id", nullable = false, updatable = false)
+    var clubId: ClubId,
+    @Column(name = "user_id", nullable = false, updatable = false)
+    var userId: UserId,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "club_id", nullable = false)
-    var club: ClubId,
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserId,
-    @Enumerated(EnumType.STRING)
-    var role: ClubRole = ClubRole.MEMBER,
+    @JoinColumn(
+        name = "user_id",
+        insertable = false,
+        updatable = false
+    )
+    var userParticipant: ClubParticipantEntity? = null,
+    @Column(name = "shirt_number")
+    var shirtNumber: Int? = null,
+    @Column(nullable = true)
+    var position: String? = null,
     @Column(nullable = false)
-    var status: ClubMemberStatus = ClubMemberStatus.ACTIVE,
+    var goals: Int = 0,
+    @Column(nullable = false)
+    var assists: Int = 0,
+    @Column(nullable = false)
+    var yellowCards: Int = 0,
+    @Column(nullable = false)
+    var redCards: Int = 0,
+    @Column(nullable = false)
+    var minutesPlayed: Int = 0,
+    @Column(nullable = false)
+    var matchesPlayed: Int = 0,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var role: ClubMemberRoleEntity = PLAYER,
     @CreationTimestamp
-    var joinedAt: Instant = Instant.now(),
+    var createdAt: Instant = Instant.now(),
     @UpdateTimestamp
     var updatedAt: Instant = Instant.now()
 ) {
-    enum class ClubRole { ADMIN, MEMBER }
-    enum class ClubMemberStatus { ACTIVE, PENDING, BANNED}
+    enum class ClubMemberRoleEntity {
+        OWNER,
+        ADMIN,
+        CAPTAIN,
+        PLAYER
+    }
 }

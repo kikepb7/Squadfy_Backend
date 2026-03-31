@@ -1,10 +1,10 @@
-package com.kikepb.squadfy.domain.model
+package com.kikepb.squadfy.api.dto
 
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.UserId
 import java.time.Instant
 
-data class ClubModel(
+data class ClubDto(
     val id: ClubId,
     val name: String,
     val description: String?,
