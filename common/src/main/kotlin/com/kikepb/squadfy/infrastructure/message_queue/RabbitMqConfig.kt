@@ -99,6 +99,12 @@ class RabbitMqConfig {
     )
 
     @Bean
+    fun clubUserEventQueue() = Queue(
+        MessageQueues.CLUB_USER_EVENTS,
+        true
+    )
+
+    @Bean
     fun notificationUserEventsBinding(notificationUserEventQueue: Queue, userExchange: TopicExchange): Binding {
         return BindingBuilder
             .bind(notificationUserEventQueue)
@@ -118,6 +124,14 @@ class RabbitMqConfig {
     fun chatUserEventsBinding(chatUserEventQueue: Queue, userExchange: TopicExchange): Binding {
         return BindingBuilder
             .bind(chatUserEventQueue)
+            .to(userExchange)
+            .with("user.*")
+    }
+
+    @Bean
+    fun clubUserEventsBinding(clubUserEventQueue: Queue, userExchange: TopicExchange): Binding {
+        return BindingBuilder
+            .bind(clubUserEventQueue)
             .to(userExchange)
             .with("user.*")
     }
