@@ -98,14 +98,14 @@ fun TeamSideModel.toEntitySide(): TeamSideEntity =
         TeamSideModel.TEAM_B -> TEAM_B
     }
 
-fun ClubParticipantModel.toClubUserSnapshotEntity(): ClubParticipantEntity =
+fun ClubParticipantModel.toClubParticipantEntity(): ClubParticipantEntity =
     ClubParticipantEntity(
         userId = userId,
         username = username,
         email = email
     )
 
-fun ClubParticipantEntity.toClubUserSnapshotModel(): ClubParticipantModel =
+fun ClubParticipantEntity.toClubParticipantModel(): ClubParticipantModel =
     ClubParticipantModel(
         userId = userId,
         username = username,
