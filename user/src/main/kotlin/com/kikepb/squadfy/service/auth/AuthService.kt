@@ -67,7 +67,7 @@ class AuthService(
         val user = userRepository.findByEmail(email = email.trim())
             ?: throw InvalidCredentialsException()
 
-        if (!passwordEncoded.matches(password, user.hashedPassword)) throw InvalidCredentialsException()
+        if (!passwordEncoded.matches(rawPassword = password, hashedPassword = user.hashedPassword)) throw InvalidCredentialsException()
         if (!user.hasVerifiedEmail) throw EmailNotVerifiedException()
 
         return user.id?.let { userId ->

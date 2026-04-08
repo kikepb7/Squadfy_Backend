@@ -39,11 +39,7 @@ class ClubMemberEntity(
     @Column(name = "user_id", nullable = false, updatable = false)
     var userId: UserId,
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-        name = "user_id",
-        insertable = false,
-        updatable = false
-    )
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
     var userParticipant: ClubParticipantEntity? = null,
     @Column(name = "shirt_number")
     var shirtNumber: Int? = null,
