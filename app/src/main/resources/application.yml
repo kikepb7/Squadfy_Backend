@@ -102,6 +102,7 @@ nginx:
 
 supabase:
   url: "https://aws-1-eu-west-3.pooler.supabase.com"
+  project-url: "https://whuvrfyzegghgckbciuz.supabase.co"
   service-key: ${SUPABASE_SERVICE_KEY}
 
 firebase:

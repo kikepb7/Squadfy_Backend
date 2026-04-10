@@ -64,7 +64,9 @@ class ClubController(
         @PathVariable("clubId") clubId: ClubId,
         @RequestPart("clubLogo") clubLogo: MultipartFile
     ): ClubDto {
-        val logoUrl = storageService.uploadClubLogo(
+        val logoUrl = storageService.uploadImage(
+            bucket = "profile-pictures",
+            folder = "clubs",
             bytes = clubLogo.bytes,
             mimeType = clubLogo.contentType ?: "image/jpeg"
         )
