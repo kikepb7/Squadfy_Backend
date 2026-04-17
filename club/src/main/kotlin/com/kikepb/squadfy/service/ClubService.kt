@@ -143,7 +143,7 @@ class ClubService(
 
         return members.map { member ->
             val userSnapshot = member.userParticipant ?: throw ClubParticipantNotFoundException(userId = member.userId)
-            member.toClubMemberModel(username = userSnapshot.username, email = userSnapshot.email)
+            member.toClubMemberModel(username = userSnapshot.username, email = userSnapshot.email, profilePictureUrl = userSnapshot.profilePictureUrl)
         }
     }
 

@@ -20,6 +20,8 @@ class ClubParticipantEntity(
     var username: String,
     @Column(nullable = false, unique = true)
     var email: String,
+    @Column(nullable = true)
+    var profilePictureUrl: String? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now()
 )

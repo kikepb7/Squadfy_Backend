@@ -48,7 +48,8 @@ class ClubParticipantService(
             ClubParticipantModel(
                 userId = rs.getObject("id", java.util.UUID::class.java),
                 username = rs.getString("username"),
-                email = rs.getString("email")
+                email = rs.getString("email"),
+                profilePictureUrl = null
             )
         }, userId).firstOrNull()
     }

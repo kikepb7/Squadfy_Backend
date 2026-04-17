@@ -34,13 +34,14 @@ fun ClubEntity.toClubModel(membersCount: Int): ClubModel =
         updatedAt = updatedAt
     )
 
-fun ClubMemberEntity.toClubMemberModel(username: String, email: String): ClubMemberModel =
+fun ClubMemberEntity.toClubMemberModel(username: String, email: String, profilePictureUrl: String?): ClubMemberModel =
     ClubMemberModel(
         id = requireNotNull(id),
         clubId = clubId,
         userId = userId,
         username = username,
         email = email,
+        profilePictureUrl = profilePictureUrl,
         shirtNumber = shirtNumber,
         position = position,
         goalsScored = goals,
@@ -102,12 +103,14 @@ fun ClubParticipantModel.toClubParticipantEntity(): ClubParticipantEntity =
     ClubParticipantEntity(
         userId = userId,
         username = username,
-        email = email
+        email = email,
+        profilePictureUrl = profilePictureUrl
     )
 
 fun ClubParticipantEntity.toClubParticipantModel(): ClubParticipantModel =
     ClubParticipantModel(
         userId = userId,
         username = username,
-        email = email
+        email = email,
+        profilePictureUrl = profilePictureUrl
     )

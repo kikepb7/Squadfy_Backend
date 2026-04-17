@@ -11,6 +11,7 @@ data class ClubMemberModel(
     val userId: UserId,
     val username: String,
     val email: String,
+    val profilePictureUrl: String?,
     val shirtNumber: Int?,
     val position: String?,
     val goalsScored: Int,
