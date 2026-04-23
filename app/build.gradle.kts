@@ -11,6 +11,7 @@ dependencies {
 	implementation(projects.chat)
 	implementation(projects.notification)
 	implementation(projects.club)
+	implementation(projects.match)
 	implementation(projects.common)
 
 	implementation(libs.kotlin.reflect)
