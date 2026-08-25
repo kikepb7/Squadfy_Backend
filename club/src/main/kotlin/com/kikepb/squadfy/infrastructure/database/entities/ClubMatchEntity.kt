@@ -5,6 +5,8 @@ import com.kikepb.squadfy.domain.type.ClubMatchId
 import com.kikepb.squadfy.domain.type.UserId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -33,6 +35,13 @@ class ClubMatchEntity(
     var createdByUserId: UserId,
     @Column(nullable = false)
     var scheduledAt: Instant,
+    @Column(name = "signup_opens_at", nullable = false)
+    var signupOpensAt: Instant,
+    @Column(name = "signup_closes_at", nullable = false)
+    var signupClosesAt: Instant,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var status: MatchStatusEntity = MatchStatusEntity.SCHEDULED,
     @Column(nullable = true)
     var teamAScore: Int? = null,
     @Column(nullable = true)
@@ -41,4 +50,11 @@ class ClubMatchEntity(
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp
     var updatedAt: Instant = Instant.now()
-)
+) {
+    enum class MatchStatusEntity {
+        SCHEDULED,
+        TEAMS_GENERATED,
+        COMPLETED,
+        CANCELLED
+    }
+}

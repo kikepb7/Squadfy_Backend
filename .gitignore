@@ -5,10 +5,13 @@
 /app/build/classes/kotlin/main/
 /build/
 /build-logic/.gradle/
+/build-logic/.kotlin/
 /build-logic/build/
 /build-logic/build/classes/kotlin/main/
 /chat/build/
 /chat/build/classes/kotlin/main/
+/club/build/
+/club/build/classes/kotlin/main/
 /common/build/
 /common/build/classes/kotlin/main/
 /notification/build/

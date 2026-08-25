@@ -1,6 +1,7 @@
 package com.kikepb.squadfy.api.dto
 
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole
+import com.kikepb.squadfy.domain.model.PlayerPositionModel
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
@@ -14,7 +15,8 @@ data class ClubMemberDto(
     val email: String,
     val profilePictureUrl: String?,
     val shirtNumber: Int?,
-    val position: String?,
+    val position: PlayerPositionModel?,
+    val rating: Int,
     val goalsScored: Int,
     val assists: Int,
     val yellowCards: Int,

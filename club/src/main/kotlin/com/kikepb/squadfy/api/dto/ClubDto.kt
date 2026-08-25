@@ -2,7 +2,9 @@ package com.kikepb.squadfy.api.dto
 
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.UserId
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalTime
 
 data class ClubDto(
     val id: ClubId,
@@ -13,6 +15,12 @@ data class ClubDto(
     val invitationCode: String,
     val maxMembers: Int?,
     val membersCount: Int,
+    val matchDayOfWeek: DayOfWeek?,
+    val matchStartTime: LocalTime?,
+    val matchEndTime: LocalTime?,
+    val seasonStartMonth: Int,
+    val seasonStartDay: Int,
+    val drawTime: LocalTime,
     val createdAt: Instant,
     val updatedAt: Instant
 )

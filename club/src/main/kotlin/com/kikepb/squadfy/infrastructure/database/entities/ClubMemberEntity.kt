@@ -43,8 +43,11 @@ class ClubMemberEntity(
     var userParticipant: ClubParticipantEntity? = null,
     @Column(name = "shirt_number")
     var shirtNumber: Int? = null,
+    @Enumerated(EnumType.STRING)
     @Column(nullable = true)
-    var position: String? = null,
+    var position: PlayerPositionEntity? = null,
+    @Column(nullable = false)
+    var rating: Int = 50,
     @Column(nullable = false)
     var goals: Int = 0,
     @Column(nullable = false)
@@ -70,5 +73,12 @@ class ClubMemberEntity(
         ADMIN,
         CAPTAIN,
         PLAYER
+    }
+
+    enum class PlayerPositionEntity {
+        GOALKEEPER,
+        DEFENDER,
+        MIDFIELDER,
+        FORWARD
     }
 }

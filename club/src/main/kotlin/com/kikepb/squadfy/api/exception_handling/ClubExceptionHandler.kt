@@ -1,12 +1,18 @@
 package com.kikepb.squadfy.api.exception_handling
 
+import com.kikepb.squadfy.domain.exception.AlreadySignedUpException
 import com.kikepb.squadfy.domain.exception.ClubCapacityReachedException
 import com.kikepb.squadfy.domain.exception.ClubInviteCodeInvalidException
 import com.kikepb.squadfy.domain.exception.ClubMatchNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubMembershipAlreadyExistsException
 import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubParticipantNotFoundException
+import com.kikepb.squadfy.domain.exception.ClubScheduleExceptionNotFoundException
+import com.kikepb.squadfy.domain.exception.InvalidScheduleException
 import com.kikepb.squadfy.domain.exception.InvalidTeamGenerationRequestException
+import com.kikepb.squadfy.domain.exception.MatchAlreadyCompletedException
+import com.kikepb.squadfy.domain.exception.MatchSignupNotFoundException
+import com.kikepb.squadfy.domain.exception.SignupWindowClosedException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -20,7 +26,9 @@ class ClubExceptionHandler {
     @ExceptionHandler(
         ClubNotFoundException::class,
         ClubMatchNotFoundException::class,
-        ClubParticipantNotFoundException::class
+        ClubParticipantNotFoundException::class,
+        ClubScheduleExceptionNotFoundException::class,
+        MatchSignupNotFoundException::class
     )
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun onNotFound(e: RuntimeException) = mapOf(
@@ -42,9 +50,19 @@ class ClubExceptionHandler {
         "message" to e.message
     )
 
+    @ExceptionHandler(InvalidScheduleException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun onInvalidSchedule(e: InvalidScheduleException) = mapOf(
+        "code" to "INVALID_SCHEDULE",
+        "message" to e.message
+    )
+
     @ExceptionHandler(
         ClubMembershipAlreadyExistsException::class,
-        ClubCapacityReachedException::class
+        ClubCapacityReachedException::class,
+        AlreadySignedUpException::class,
+        MatchAlreadyCompletedException::class,
+        SignupWindowClosedException::class
     )
     @ResponseStatus(HttpStatus.CONFLICT)
     fun onConflict(e: RuntimeException) = mapOf(

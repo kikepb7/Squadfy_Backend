@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface ClubRepository : JpaRepository<ClubEntity, ClubId> {
     fun findByInvitationCode(invitationCode: String): ClubEntity?
     fun existsByInvitationCode(invitationCode: String): Boolean
+    fun findAllByMatchDayOfWeekIsNotNull(): List<ClubEntity>
 }
