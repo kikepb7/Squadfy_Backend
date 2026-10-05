@@ -85,6 +85,25 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        # Ready to serve traffic only with the database up; brokers/caches degrade gracefully.
+        readiness:
+          include: readinessState,db
+  health:
+    # An external SMTP outage must not take the instance out of rotation.
+    mail:
+      enabled: false
+
 jwt:
   secret: ${JWT_SECRET_BASE64}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}

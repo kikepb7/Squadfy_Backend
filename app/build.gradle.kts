@@ -23,6 +23,7 @@ dependencies {
 	runtimeOnly(libs.postgresql)
 
 	implementation(libs.spring.boot.starter.flyway)
+	implementation(libs.spring.boot.starter.actuator)
 	runtimeOnly(libs.flyway.database.postgresql)
 
 	testImplementation(libs.spring.boot.data.jpa.test)

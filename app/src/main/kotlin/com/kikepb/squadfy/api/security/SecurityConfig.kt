@@ -25,6 +25,8 @@ class SecurityConfig {
                     .authenticated()
                     .requestMatchers("/", "/api/auth/**")
                     .permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info")
+                    .permitAll()
                     .dispatcherTypeMatchers(
                         DispatcherType.ERROR,
                         DispatcherType.FORWARD
