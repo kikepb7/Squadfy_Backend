@@ -5,4 +5,5 @@ object TestContainerImages {
     const val POSTGRES = "postgres:16-alpine"
     const val RABBITMQ = "rabbitmq:3.13-management-alpine"
     const val REDIS = "redis:7-alpine"
+    const val MAILPIT = "axllent/mailpit:v1.27"
 }
