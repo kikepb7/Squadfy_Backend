@@ -66,7 +66,8 @@ import kotlin.test.assertTrue
     MatchService::class,
     MatchTeamService::class,
     MatchEventService::class,
-    PlayerRatingService::class
+    PlayerRatingService::class,
+    MatchSchedulerService::class
 )
 class MatchFlowIntegrationTest {
 
@@ -97,6 +98,7 @@ class MatchFlowIntegrationTest {
     @Autowired lateinit var teamService: MatchTeamService
     @Autowired lateinit var eventService: MatchEventService
     @Autowired lateinit var ratingService: PlayerRatingService
+    @Autowired lateinit var scheduler: MatchSchedulerService
 
     private val clubId: ClubId = UUID.randomUUID()
     private val owner: UserId = UUID.randomUUID()
@@ -248,6 +250,50 @@ class MatchFlowIntegrationTest {
         ratingService.ratingsFor(clubId = clubId, memberIds = teams.teamA + teams.teamB).values.forEach {
             assertTrue(abs(it - PlayerRatingCalculator.INITIAL_RATING) < 1e-9)
         }
+    }
+
+    @Test
+    fun `teams are published automatically when the announcement closes and managers can rectify them`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        enrollPlayers(announcementOf(match), count = 11)
+
+        clock.now = madrid("2026-10-07T21:55")
+        scheduler.closeExpiredMatchAnnouncements()
+        assertTrue(matchService.getMatchById(matchId = match.id, userId = owner).teamA.isEmpty())
+
+        clock.now = madrid("2026-10-07T22:00")
+        scheduler.closeExpiredMatchAnnouncements()
+
+        val published = matchService.getMatchById(matchId = match.id, userId = owner)
+        assertEquals(MatchAnnouncementModel.MatchAnnouncementStatus.CLOSED, announcementOf(match).status)
+        assertEquals(5, published.teamA.size)
+        assertEquals(5, published.teamB.size)
+        assertEquals(published.enrolledPlayers.toSet(), (published.teamA + published.teamB).toSet())
+
+        val rectified = teamService.generateTeams(
+            matchId = match.id,
+            userId = owner,
+            mode = TeamGenerationMode.MANUAL,
+            manualTeamA = published.teamB,
+            manualTeamB = published.teamA
+        )
+        assertEquals(published.teamB, rectified.teamA)
+    }
+
+    @Test
+    fun `teams already drawn with the confirmed players are kept when the announcement closes`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        enrollPlayers(announcementOf(match), count = 10)
+        val drawn = teamService.generateTeams(match.id, owner, TeamGenerationMode.AUTO, null, null)
+
+        clock.now = madrid("2026-10-07T22:00")
+        scheduler.closeExpiredMatchAnnouncements()
+
+        val afterClose = matchService.getMatchById(matchId = match.id, userId = owner)
+        assertEquals(drawn.teamA.toSet(), afterClose.teamA.toSet())
+        assertEquals(drawn.teamB.toSet(), afterClose.teamB.toSet())
     }
 
     @Test

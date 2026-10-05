@@ -168,14 +168,15 @@ class MatchAnnouncementService(
         matchAnnouncementRepository.findByMatchId(matchId = matchId)?.let { it.status = CANCELLED }
     }
 
+    /** @return ids of the matches whose announcement has just been closed. */
     @Transactional
-    fun closeExpiredMatchAnnouncements(): Int {
+    fun closeExpiredMatchAnnouncements(): List<MatchId> {
         val expired = matchAnnouncementRepository.findAllByStatusAndClosesAtLessThanEqual(
             status = OPEN,
             now = clock.instant()
         )
         expired.forEach { it.status = CLOSED }
-        return expired.size
+        return expired.map { it.matchId }
     }
 
     private fun ensureOpen(matchAnnouncement: MatchAnnouncementEntity) {

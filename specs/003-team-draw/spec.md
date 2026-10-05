@@ -19,7 +19,8 @@ Con los jugadores inscritos en la convocatoria, formar dos equipos lo más parej
   - Los jugadores nuevos se mueven más rápido hasta que su rating se estabiliza (~10 partidos).
   - Reabrir un partido revierte exactamente los cambios que produjo.
 - **RN-7**: Modo `MANUAL`: el gestor indica ambos equipos; deben ser disjuntos, no vacíos, con diferencia ≤ 1 y solo con inscritos.
-- **RN-8**: Solo los gestores sortean y solo en partidos `SCHEDULED`. Volver a sortear sustituye los equipos anteriores.
+- **RN-8**: Solo los gestores sortean manualmente y solo en partidos `SCHEDULED`. Volver a sortear sustituye los equipos anteriores.
+- **RN-9**: **Al cerrarse la convocatoria (22:00 del día anterior) los equipos se publican automáticamente** con un sorteo `AUTO` entre los confirmados. Si un gestor ya había sorteado exactamente con esos jugadores, se respetan sus equipos. Después, los gestores pueden rectificar (nuevo sorteo `AUTO` o equipos `MANUAL`).
 
 ## Criterios de aceptación
 - **CA-1**: Con 2 porteros y 8 jugadores de campo → 1 portero por equipo.
@@ -28,6 +29,8 @@ Con los jugadores inscritos en la convocatoria, formar dos equipos lo más parej
 - **CA-4**: Sortear dos veces seguidas no falla (regresión del índice único) y deja solo los equipos nuevos.
 - **CA-5**: Un `PLAYER` que intenta sortear → 403.
 - **CA-6**: Modo manual con un jugador no inscrito → 400.
+- **CA-7** (RN-9): Con 11 inscritos en un 5v5, al cerrar la convocatoria quedan publicados dos equipos de 5 con los 10 confirmados (el de la lista de espera no juega) y el gestor puede cambiarlos en modo manual.
+- **CA-8** (RN-9): Si antes del cierre el gestor sorteó con los mismos confirmados, al cerrar se mantienen esos equipos.
 
 ## API (contrato)
 | Método | Ruta | Permiso |
@@ -43,4 +46,4 @@ La respuesta es `MatchDto` con `teamA`/`teamB` (ids de miembro).
 ## Preguntas abiertas
 - [x] Valoración manual: **no**; el nivel se calcula de las estadísticas de partidos (decidido 2026-10-05).
 - [x] Cada jugador puede ver **su propio** rating (decidido 2026-10-05): `GET /api/player-ratings/club/{clubId}/me`.
-- [ ] ¿Se publican los equipos automáticamente al cerrar la convocatoria o el gestor los confirma?
+- [x] Los equipos se publican automáticamente al cerrar la convocatoria y el gestor puede rectificarlos (decidido 2026-10-05).

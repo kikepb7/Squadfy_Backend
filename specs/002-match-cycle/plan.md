@@ -3,7 +3,7 @@
 ## Enfoque (implementado)
 - **Reglas de fechas puras** en `match/domain/model/MatchCalendar.kt` (`nextMatchDate`, `announcementWindow`), sin Spring, con tests.
 - **`MatchPlanningService`** crea partido + convocatoria en una única transacción. `planNextMatch(schedule)` aplica RN-3/RN-9 y es idempotente; el índice único `(club_id, scheduled_at)` en `matches` protege contra ejecuciones concurrentes (RN-11).
-- **`MatchSchedulerService`**: job horario `planUpcomingMatches` (minuto 5) y `closeExpiredMatchAnnouncements` (minuto 0). Al ser horario, un reinicio no pierde la semana.
+- **`MatchSchedulerService`**: job horario `planUpcomingMatches` (minuto 5) y `closeExpiredMatchAnnouncements` cada 5 minutos, que además publica los equipos (spec 003 RN-9). Al ser periódicos e idempotentes, un reinicio no pierde la semana.
 - **Inscripción**: `findByIdForUpdate` (`PESSIMISTIC_WRITE`) serializa enroll/withdraw por convocatoria (RN-7). `ensureOpen` valida estado y ventana con `Clock` (RN-6).
 - **Permisos**: `ClubAccessGuard` sobre el puerto `ClubMembershipProvider` (implementado por `club`).
 - Alternativa descartada: "abrir N días antes" (`callup_open_days_before_match`) — no cumple la regla del producto y se eliminó.

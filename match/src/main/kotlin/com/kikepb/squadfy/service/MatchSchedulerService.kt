@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service
 class MatchSchedulerService(
     private val clubMatchScheduleService: ClubMatchScheduleService,
     private val matchPlanningService: MatchPlanningService,
-    private val matchAnnouncementService: MatchAnnouncementService
+    private val matchAnnouncementService: MatchAnnouncementService,
+    private val matchTeamService: MatchTeamService
 ) {
 
     private val log = LoggerFactory.getLogger(MatchSchedulerService::class.java)
@@ -25,9 +26,19 @@ class MatchSchedulerService(
         }
     }
 
-    @Scheduled(cron = "0 0 * * * *", zone = "UTC")
+    /** Every 5 minutes so announcements close (and teams are published) right after 22:00 in any time zone. */
+    @Scheduled(cron = "0 */5 * * * *", zone = "UTC")
     fun closeExpiredMatchAnnouncements() {
-        val closed = matchAnnouncementService.closeExpiredMatchAnnouncements()
-        if (closed > 0) log.info("[MatchScheduler] Closed {} expired match announcements", closed)
+        val closedMatchIds = matchAnnouncementService.closeExpiredMatchAnnouncements()
+        if (closedMatchIds.isNotEmpty()) log.info("[MatchScheduler] Closed {} expired match announcements", closedMatchIds.size)
+
+        closedMatchIds.forEach { matchId ->
+            try {
+                matchTeamService.publishTeamsOnAnnouncementClosed(matchId = matchId)
+                    ?.let { log.info("[MatchScheduler] Published teams for match={}", matchId) }
+            } catch (ex: Exception) {
+                log.error("[MatchScheduler] Error publishing teams for match={}: {}", matchId, ex.message, ex)
+            }
+        }
     }
 }

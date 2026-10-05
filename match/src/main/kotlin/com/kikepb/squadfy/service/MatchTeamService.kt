@@ -51,13 +51,39 @@ class MatchTeamService(
             TeamGenerationMode.MANUAL -> manualAssignTeams(teamA = manualTeamA, teamB = manualTeamB, enrolled = enrolled)
         }
 
+        replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB)
+        return matchService.loadMatch(matchId = matchId)
+    }
+
+    /**
+     * Publishes the teams automatically when the announcement closes (spec 003 RN-9). Teams that a
+     * manager already drew with exactly the confirmed players are kept; otherwise a balanced draw is
+     * made. Managers can still rectify afterwards with [generateTeams].
+     *
+     * @return the match with its teams, or null when nothing was published.
+     */
+    @Transactional
+    fun publishTeamsOnAnnouncementClosed(matchId: MatchId): MatchModel? {
+        val match = matchService.findMatchEntity(matchId = matchId)
+        if (match.status != SCHEDULED) return null
+
+        val confirmed = matchAnnouncementService.getEnrolledPlayersByMatch(matchId = matchId)
+        if (confirmed.size < 2) return null
+
+        val currentTeams = matchTeamPlayerRepository.findAllByMatchId(matchId = matchId).map { it.clubMemberId }
+        if (currentTeams.toSet() == confirmed.toSet()) return null
+
+        val (teamA, teamB) = autoAssignTeams(clubId = match.clubId, enrolled = confirmed)
+        replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB)
+        return matchService.loadMatch(matchId = matchId)
+    }
+
+    private fun replaceTeams(matchId: MatchId, teamA: List<ClubMemberId>, teamB: List<ClubMemberId>) {
         matchTeamPlayerRepository.deleteAllByMatchIdInBulk(matchId = matchId)
         matchTeamPlayerRepository.saveAllAndFlush(
             teamA.map { MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_A.toEntitySide()) } +
                 teamB.map { MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_B.toEntitySide()) }
         )
-
-        return matchService.loadMatch(matchId = matchId)
     }
 
     private fun autoAssignTeams(clubId: ClubId, enrolled: List<ClubMemberId>): Pair<List<ClubMemberId>, List<ClubMemberId>> {

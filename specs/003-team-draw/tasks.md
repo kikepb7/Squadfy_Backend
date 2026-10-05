@@ -13,4 +13,4 @@
 - [x] T7 `GET /api/player-ratings/club/{clubId}/me`.
 - [x] T9 Tests de integración (regenerar equipos, permisos, cierre y rating) — `MatchFlowIntegrationTest`.
 - [ ] T8 (siguiente rama, mejora) Devolver el nivel total de cada equipo a los gestores.
-- [ ] T10 Pendiente de producto: ¿los equipos se publican automáticamente al cerrar la convocatoria o los confirma el gestor?
+- [x] T10 Publicación automática de equipos al cerrar la convocatoria (`MatchTeamService.publishTeamsOnAnnouncementClosed`) + tests CA-7, CA-8.
