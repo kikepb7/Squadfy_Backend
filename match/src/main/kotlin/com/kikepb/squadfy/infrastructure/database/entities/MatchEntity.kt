@@ -24,7 +24,8 @@ import java.time.Instant
     indexes = [
         Index(name = "idx_matches_club_id", columnList = "club_id"),
         Index(name = "idx_matches_scheduled_at", columnList = "scheduled_at"),
-        Index(name = "idx_matches_status", columnList = "status")
+        Index(name = "idx_matches_status", columnList = "status"),
+        Index(name = "idx_matches_club_scheduled_at", columnList = "club_id,scheduled_at", unique = true)
     ]
 )
 class MatchEntity(

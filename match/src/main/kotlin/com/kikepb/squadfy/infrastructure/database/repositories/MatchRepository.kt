@@ -16,9 +16,23 @@ interface MatchRepository : JpaRepository<MatchEntity, MatchId> {
         status: MatchStatus
     ): List<MatchEntity>
 
-    fun existsByClubIdAndScheduledAtBetween(
+    fun existsByClubIdAndStatusAndScheduledAtAfter(
+        clubId: ClubId,
+        status: MatchStatus,
+        after: Instant
+    ): Boolean
+
+    fun existsByClubIdAndScheduledAtGreaterThanEqualAndScheduledAtLessThan(
         clubId: ClubId,
         from: Instant,
         to: Instant
     ): Boolean
+
+    fun findFirstByClubIdAndStatusOrderByScheduledAtDesc(clubId: ClubId, status: MatchStatus): MatchEntity?
+
+    fun findFirstByClubIdAndStatusNotAndScheduledAtBeforeOrderByScheduledAtDesc(
+        clubId: ClubId,
+        status: MatchStatus,
+        before: Instant
+    ): MatchEntity?
 }

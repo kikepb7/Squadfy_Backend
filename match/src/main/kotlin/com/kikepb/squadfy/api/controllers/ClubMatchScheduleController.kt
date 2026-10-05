@@ -4,6 +4,7 @@ import com.kikepb.squadfy.api.dto.ClubMatchScheduleDto
 import com.kikepb.squadfy.api.dto.CreateClubMatchScheduleRequest
 import com.kikepb.squadfy.api.dto.UpdateClubMatchScheduleRequest
 import com.kikepb.squadfy.api.mappers.toClubMatchScheduleDto
+import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMatchScheduleId
 import com.kikepb.squadfy.service.ClubMatchScheduleService
@@ -29,16 +30,17 @@ class ClubMatchScheduleController(
     fun createSchedule(@Valid @RequestBody body: CreateClubMatchScheduleRequest): ClubMatchScheduleDto =
         clubMatchScheduleService.createSchedule(
             clubId = body.clubId,
+            userId = requestUserId,
             matchDayOfWeek = body.matchDayOfWeek,
             matchTime = body.matchTime,
-            matchAnnouncementOpenDaysBeforeMatch = body.matchAnnouncementOpenDaysBeforeMatch,
-            maxPlayers = body.maxPlayers
+            timeZone = body.timeZone,
+            format = body.format
         ).toClubMatchScheduleDto()
 
     @GetMapping("/club/{clubId}")
     fun getScheduleByClub(@PathVariable("clubId") clubId: ClubId): ClubMatchScheduleDto =
         clubMatchScheduleService
-            .getScheduleByClub(clubId = clubId)
+            .getScheduleByClub(clubId = clubId, userId = requestUserId)
             .toClubMatchScheduleDto()
 
     @PatchMapping("/{scheduleId}")
@@ -48,10 +50,11 @@ class ClubMatchScheduleController(
     ): ClubMatchScheduleDto =
         clubMatchScheduleService.updateSchedule(
             scheduleId = scheduleId,
+            userId = requestUserId,
             matchDayOfWeek = body.matchDayOfWeek,
             matchTime = body.matchTime,
-            matchAnnouncementOpenDaysBeforeMatch = body.matchAnnouncementOpenDaysBeforeMatch,
-            maxPlayers = body.maxPlayers,
+            timeZone = body.timeZone,
+            format = body.format,
             isActive = body.isActive
         ).toClubMatchScheduleDto()
 }

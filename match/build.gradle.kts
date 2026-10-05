@@ -24,6 +24,10 @@ dependencies {
     implementation(libs.jackson.datatype)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.spring.boot.data.jpa.test)
+    testImplementation(libs.spring.boot.testcontainers)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
 }
 
 tasks.test {

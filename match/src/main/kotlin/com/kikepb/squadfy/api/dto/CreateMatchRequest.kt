@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.dto
 
+import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
 import jakarta.validation.constraints.Future
 import jakarta.validation.constraints.NotNull
@@ -10,5 +11,7 @@ data class CreateMatchRequest(
     val clubId: ClubId,
     @field:NotNull(message = "scheduledAt is required")
     @field:Future(message = "scheduledAt must be a future date")
-    val scheduledAt: Instant
+    val scheduledAt: Instant,
+    /** Defaults to the club schedule's format. */
+    val format: MatchFormat? = null
 )

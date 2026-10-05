@@ -5,13 +5,15 @@ import com.kikepb.squadfy.domain.type.ClubMatchScheduleId
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalTime
+import java.time.ZoneId
 
 data class ClubMatchScheduleModel(
     val id: ClubMatchScheduleId,
     val clubId: ClubId,
     val matchDayOfWeek: DayOfWeek,
     val matchTime: LocalTime,
-    val matchAnnouncementOpenDaysBeforeMatch: Int,
+    val timeZone: ZoneId,
+    val format: MatchFormat,
     val maxPlayers: Int,
     val isActive: Boolean,
     val createdAt: Instant,

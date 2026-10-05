@@ -1,10 +1,13 @@
 package com.kikepb.squadfy.infrastructure.database.entities
 
+import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel.EntryStatus
 import com.kikepb.squadfy.domain.type.MatchAnnouncementEntryId
 import com.kikepb.squadfy.domain.type.MatchAnnouncementId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -35,6 +38,9 @@ class MatchAnnouncementEntryEntity(
     var matchAnnouncementId: MatchAnnouncementId,
     @Column(name = "club_member_id", nullable = false, updatable = false)
     var clubMemberId: ClubMemberId,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(16) not null default 'CONFIRMED'")
+    var status: EntryStatus = EntryStatus.CONFIRMED,
     @CreationTimestamp
     var enrolledAt: Instant = Instant.now()
 )

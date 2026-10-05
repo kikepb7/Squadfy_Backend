@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.infrastructure.database.entities
 
+import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMatchScheduleId
 import jakarta.persistence.Column
@@ -36,10 +37,18 @@ class ClubMatchScheduleEntity(
     var matchDayOfWeek: DayOfWeek,
     @Column(name = "match_time", nullable = false)
     var matchTime: LocalTime,
-    @Column(name = "callup_open_days_before_match", nullable = false)
-    var matchAnnouncementOpenDaysBeforeMatch: Int = 6,
+    @Column(
+        name = "time_zone",
+        nullable = false,
+        columnDefinition = "varchar(64) not null default '$DEFAULT_CLUB_TIME_ZONE'"
+    )
+    var timeZone: String = DEFAULT_CLUB_TIME_ZONE,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "format", nullable = false, columnDefinition = "varchar(16) not null default 'ELEVEN_A_SIDE'")
+    var format: MatchFormat = MatchFormat.ELEVEN_A_SIDE,
+    /** Derived from [format]; kept as a column so announcements can copy it. */
     @Column(name = "max_players", nullable = false)
-    var maxPlayers: Int = 22,
+    var maxPlayers: Int = format.maxPlayers,
     @Column(name = "is_active", nullable = false)
     var isActive: Boolean = true,
     @CreationTimestamp
@@ -47,3 +56,5 @@ class ClubMatchScheduleEntity(
     @UpdateTimestamp
     var updatedAt: Instant = Instant.now()
 )
+
+const val DEFAULT_CLUB_TIME_ZONE = "Europe/Madrid"

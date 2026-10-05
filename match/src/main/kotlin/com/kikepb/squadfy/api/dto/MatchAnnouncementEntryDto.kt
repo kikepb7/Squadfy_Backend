@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.dto
 
+import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel.EntryStatus
 import com.kikepb.squadfy.domain.type.MatchAnnouncementEntryId
 import com.kikepb.squadfy.domain.type.MatchAnnouncementId
 import com.kikepb.squadfy.domain.type.ClubMemberId
@@ -9,5 +10,6 @@ data class MatchAnnouncementEntryDto(
     val id: MatchAnnouncementEntryId,
     val matchAnnouncementId: MatchAnnouncementId,
     val clubMemberId: ClubMemberId,
+    val status: EntryStatus,
     val enrolledAt: Instant
 )

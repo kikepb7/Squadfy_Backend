@@ -6,6 +6,7 @@ import com.kikepb.squadfy.api.dto.GenerateTeamsRequest
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.TeamGenerationModeDto
 import com.kikepb.squadfy.api.mappers.toMatchDto
+import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.MatchEventId
 import com.kikepb.squadfy.domain.type.MatchId
@@ -36,31 +37,48 @@ class MatchController(
     @ResponseStatus(HttpStatus.CREATED)
     fun createMatch(@Valid @RequestBody body: CreateMatchRequest): MatchDto =
         matchService
-            .createMatch(clubId = body.clubId, scheduledAt = body.scheduledAt)
+            .createMatch(
+                clubId = body.clubId,
+                userId = requestUserId,
+                scheduledAt = body.scheduledAt,
+                format = body.format
+            )
             .toMatchDto()
 
     @GetMapping("/{matchId}")
     fun getMatchById(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
-            .getMatchById(matchId = matchId)
+            .getMatchById(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
     @GetMapping("/club/{clubId}")
     fun getMatchesByClub(@PathVariable("clubId") clubId: ClubId): List<MatchDto> =
         matchService
-            .getMatchesByClub(clubId = clubId)
+            .getMatchesByClub(clubId = clubId, userId = requestUserId)
             .map { it.toMatchDto() }
 
     @GetMapping("/club/{clubId}/scheduled")
     fun getScheduledMatchesByClub(@PathVariable("clubId") clubId: ClubId): List<MatchDto> =
         matchService
-            .getScheduledMatchesByClub(clubId = clubId)
+            .getScheduledMatchesByClub(clubId = clubId, userId = requestUserId)
             .map { it.toMatchDto() }
 
     @DeleteMapping("/{matchId}/cancel")
     fun cancelMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
-            .cancelMatch(matchId = matchId)
+            .cancelMatch(matchId = matchId, userId = requestUserId)
+            .toMatchDto()
+
+    @PostMapping("/{matchId}/complete")
+    fun completeMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
+        matchService
+            .completeMatch(matchId = matchId, userId = requestUserId)
+            .toMatchDto()
+
+    @PostMapping("/{matchId}/reopen")
+    fun reopenMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
+        matchService
+            .reopenMatch(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
     @PostMapping("/{matchId}/generate-teams")
@@ -70,6 +88,7 @@ class MatchController(
     ): MatchDto =
         matchTeamService.generateTeams(
             matchId = matchId,
+            userId = requestUserId,
             mode = body.mode.toDomain(),
             manualTeamA = body.manualTeamA,
             manualTeamB = body.manualTeamB
@@ -83,6 +102,7 @@ class MatchController(
     ): MatchDto =
         matchEventService.addEvent(
             matchId = matchId,
+            userId = requestUserId,
             clubMemberId = body.clubMemberId,
             type = body.type,
             minute = body.minute
@@ -94,7 +114,7 @@ class MatchController(
         @PathVariable("eventId") eventId: MatchEventId
     ): MatchDto =
         matchEventService
-            .removeEvent(matchId = matchId, eventId = eventId)
+            .removeEvent(matchId = matchId, userId = requestUserId, eventId = eventId)
             .toMatchDto()
 
     private fun TeamGenerationModeDto.toDomain(): TeamGenerationMode = when (this) {

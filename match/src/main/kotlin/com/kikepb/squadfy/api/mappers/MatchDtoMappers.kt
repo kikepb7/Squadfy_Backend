@@ -5,6 +5,7 @@ import com.kikepb.squadfy.api.dto.MatchAnnouncementEntryDto
 import com.kikepb.squadfy.api.dto.ClubMatchScheduleDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.MatchEventDto
+import com.kikepb.squadfy.api.dto.PlayerRatingDto
 import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
@@ -14,6 +15,8 @@ import com.kikepb.squadfy.domain.model.MatchEventType.GOAL
 import com.kikepb.squadfy.domain.model.MatchEventType.RED_CARD
 import com.kikepb.squadfy.domain.model.MatchEventType.YELLOW_CARD
 import com.kikepb.squadfy.domain.model.MatchModel
+import com.kikepb.squadfy.domain.model.PlayerRatingModel
+import kotlin.math.roundToInt
 
 fun MatchModel.toMatchDto(): MatchDto = MatchDto(
     id = id,
@@ -47,7 +50,8 @@ fun ClubMatchScheduleModel.toClubMatchScheduleDto(): ClubMatchScheduleDto = Club
     clubId = clubId,
     matchDayOfWeek = matchDayOfWeek,
     matchTime = matchTime,
-    matchAnnouncementOpenDaysBeforeMatch = matchAnnouncementOpenDaysBeforeMatch,
+    timeZone = timeZone.id,
+    format = format,
     maxPlayers = maxPlayers,
     isActive = isActive,
     createdAt = createdAt,
@@ -59,11 +63,13 @@ fun MatchAnnouncementModel.toMatchAnnouncementDto(): MatchAnnouncementDto = Matc
     matchId = matchId,
     clubId = clubId,
     maxPlayers = maxPlayers,
-    enrolledCount = enrolledCount,
+    confirmedCount = confirmedEntries.size,
+    waitlistCount = waitlistEntries.size,
     opensAt = opensAt,
     closesAt = closesAt,
     status = status,
-    entries = entries.map { it.toMatchAnnouncementEntryDto() },
+    entries = confirmedEntries.map { it.toMatchAnnouncementEntryDto() },
+    waitlist = waitlistEntries.map { it.toMatchAnnouncementEntryDto() },
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -72,5 +78,14 @@ fun MatchAnnouncementEntryModel.toMatchAnnouncementEntryDto(): MatchAnnouncement
     id = id,
     matchAnnouncementId = matchAnnouncementId,
     clubMemberId = clubMemberId,
+    status = status,
     enrolledAt = enrolledAt
+)
+
+fun PlayerRatingModel.toPlayerRatingDto(): PlayerRatingDto = PlayerRatingDto(
+    clubId = clubId,
+    clubMemberId = clubMemberId,
+    rating = rating.roundToInt(),
+    matchesRated = matchesRated,
+    isProvisional = isProvisional
 )

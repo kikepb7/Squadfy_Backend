@@ -23,19 +23,19 @@ class MatchAnnouncementController(
     @GetMapping("/{matchAnnouncementId}")
     fun getMatchAnnouncementById(@PathVariable("matchAnnouncementId") matchAnnouncementId: MatchAnnouncementId): MatchAnnouncementDto =
         matchAnnouncementService
-            .getMatchAnnouncementById(matchAnnouncementId = matchAnnouncementId)
+            .getMatchAnnouncementById(matchAnnouncementId = matchAnnouncementId, userId = requestUserId)
             .toMatchAnnouncementDto()
 
     @GetMapping("/match/{matchId}")
     fun getMatchAnnouncementByMatch(@PathVariable("matchId") matchId: MatchId): MatchAnnouncementDto =
         matchAnnouncementService
-            .getMatchAnnouncementByMatch(matchId = matchId)
+            .getMatchAnnouncementByMatch(matchId = matchId, userId = requestUserId)
             .toMatchAnnouncementDto()
 
     @GetMapping("/club/{clubId}")
     fun getMatchAnnouncementsByClub(@PathVariable("clubId") clubId: ClubId): List<MatchAnnouncementDto> =
         matchAnnouncementService
-            .getMatchAnnouncementsByClub(clubId = clubId)
+            .getMatchAnnouncementsByClub(clubId = clubId, userId = requestUserId)
             .map { it.toMatchAnnouncementDto() }
 
     @PostMapping("/{matchAnnouncementId}/enroll")

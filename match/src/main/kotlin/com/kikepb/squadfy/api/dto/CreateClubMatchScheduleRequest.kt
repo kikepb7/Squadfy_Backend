@@ -1,8 +1,9 @@
 package com.kikepb.squadfy.api.dto
 
+import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
-import jakarta.validation.constraints.Max
-import jakarta.validation.constraints.Min
+import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_CLUB_TIME_ZONE
+import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -14,10 +15,7 @@ data class CreateClubMatchScheduleRequest(
     val matchDayOfWeek: DayOfWeek,
     @field:NotNull(message = "matchTime is required")
     val matchTime: LocalTime,
-    @field:Min(value = 1, message = "matchAnnouncementOpenDaysBeforeMatch must be at least 1")
-    @field:Max(value = 6, message = "matchAnnouncementOpenDaysBeforeMatch cannot exceed 6")
-    val matchAnnouncementOpenDaysBeforeMatch: Int = 6,
-    @field:Min(value = 2, message = "maxPlayers must be at least 2")
-    @field:Max(value = 50, message = "maxPlayers cannot exceed 50")
-    val maxPlayers: Int = 22
+    @field:NotBlank(message = "timeZone cannot be blank")
+    val timeZone: String = DEFAULT_CLUB_TIME_ZONE,
+    val format: MatchFormat = MatchFormat.ELEVEN_A_SIDE
 )

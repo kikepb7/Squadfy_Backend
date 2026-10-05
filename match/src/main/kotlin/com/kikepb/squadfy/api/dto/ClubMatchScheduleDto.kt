@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.dto
 
+import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMatchScheduleId
 import java.time.DayOfWeek
@@ -11,7 +12,8 @@ data class ClubMatchScheduleDto(
     val clubId: ClubId,
     val matchDayOfWeek: DayOfWeek,
     val matchTime: LocalTime,
-    val matchAnnouncementOpenDaysBeforeMatch: Int,
+    val timeZone: String,
+    val format: MatchFormat,
     val maxPlayers: Int,
     val isActive: Boolean,
     val createdAt: Instant,

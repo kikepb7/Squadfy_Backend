@@ -1,16 +1,18 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.exception.InvalidMatchEventException
+import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
 import com.kikepb.squadfy.domain.exception.MatchEventNotFoundException
-import com.kikepb.squadfy.domain.exception.MatchNotFoundException
 import com.kikepb.squadfy.domain.model.MatchEventType
 import com.kikepb.squadfy.domain.model.MatchModel
+import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchEventId
 import com.kikepb.squadfy.domain.type.MatchId
+import com.kikepb.squadfy.domain.type.UserId
+import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEventEntity
-import com.kikepb.squadfy.infrastructure.database.mappers.toMatchModel
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchEventRepository
-import com.kikepb.squadfy.infrastructure.database.repositories.MatchRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchTeamPlayerRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -18,23 +20,27 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class MatchEventService(
-    private val matchRepository: MatchRepository,
+    private val matchService: MatchService,
     private val matchEventRepository: MatchEventRepository,
     private val matchTeamPlayerRepository: MatchTeamPlayerRepository,
-    private val matchAnnouncementService: MatchAnnouncementService
+    private val clubAccessGuard: ClubAccessGuard
 ) {
 
     @Transactional
     fun addEvent(
         matchId: MatchId,
+        userId: UserId,
         clubMemberId: ClubMemberId,
         type: MatchEventType,
         minute: Int?
     ): MatchModel {
-        matchRepository.findByIdOrNull(matchId)
-            ?: throw MatchNotFoundException()
+        val match = findEditableMatch(matchId = matchId, userId = userId)
 
-        matchEventRepository.save(
+        val isPlayingThisMatch = matchTeamPlayerRepository.findAllByMatchId(matchId = requireNotNull(match.id))
+            .any { it.clubMemberId == clubMemberId }
+        if (!isPlayingThisMatch) throw InvalidMatchEventException("The player is not assigned to any team in this match")
+
+        matchEventRepository.saveAndFlush(
             MatchEventEntity(
                 matchId = matchId,
                 clubMemberId = clubMemberId,
@@ -43,27 +49,29 @@ class MatchEventService(
             )
         )
 
-        return buildMatchModel(matchId)
+        return matchService.loadMatch(matchId = matchId)
     }
 
     @Transactional
-    fun removeEvent(matchId: MatchId, eventId: MatchEventId): MatchModel {
-        matchRepository.findByIdOrNull(matchId)
-            ?: throw MatchNotFoundException()
+    fun removeEvent(matchId: MatchId, userId: UserId, eventId: MatchEventId): MatchModel {
+        findEditableMatch(matchId = matchId, userId = userId)
 
         val event = matchEventRepository.findByIdOrNull(eventId)
+            ?.takeIf { it.matchId == matchId }
             ?: throw MatchEventNotFoundException()
 
         matchEventRepository.delete(event)
+        matchEventRepository.flush()
 
-        return buildMatchModel(matchId)
+        return matchService.loadMatch(matchId = matchId)
     }
 
-    private fun buildMatchModel(matchId: MatchId): MatchModel {
-        val match = matchRepository.findByIdOrNull(matchId) ?: throw MatchNotFoundException()
-        val players = matchTeamPlayerRepository.findAllByMatchId(matchId)
-        val events = matchEventRepository.findAllByMatchId(matchId)
-        val enrolledPlayers = matchAnnouncementService.getEnrolledPlayersByMatch(matchId)
-        return match.toMatchModel(players = players, events = events, enrolledPlayers = enrolledPlayers)
+    private fun findEditableMatch(matchId: MatchId, userId: UserId): MatchEntity {
+        val match = matchService.findMatchEntity(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        if (match.status != SCHEDULED) {
+            throw InvalidMatchStateException("Events can only be modified on scheduled matches (reopen a completed match first)")
+        }
+        return match
     }
 }

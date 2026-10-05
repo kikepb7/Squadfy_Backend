@@ -1,94 +1,99 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.club.ClubMembershipProvider
 import com.kikepb.squadfy.domain.exception.InvalidTeamGenerationRequestException
-import com.kikepb.squadfy.domain.exception.MatchNotFoundException
 import com.kikepb.squadfy.domain.model.MatchModel
+import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
+import com.kikepb.squadfy.domain.model.PlayerProfile
+import com.kikepb.squadfy.domain.model.TeamBalancer
 import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_A
 import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_B
+import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchId
+import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.MatchTeamPlayerEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toEntitySide
-import com.kikepb.squadfy.infrastructure.database.mappers.toMatchModel
-import com.kikepb.squadfy.infrastructure.database.repositories.MatchEventRepository
-import com.kikepb.squadfy.infrastructure.database.repositories.MatchRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchTeamPlayerRepository
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
-import kotlin.random.Random
+import kotlin.math.abs
 
 @Service
 class MatchTeamService(
-    private val matchRepository: MatchRepository,
+    private val matchService: MatchService,
     private val matchTeamPlayerRepository: MatchTeamPlayerRepository,
-    private val matchEventRepository: MatchEventRepository,
-    private val matchAnnouncementService: MatchAnnouncementService
+    private val matchAnnouncementService: MatchAnnouncementService,
+    private val clubMembershipProvider: ClubMembershipProvider,
+    private val playerRatingService: PlayerRatingService,
+    private val clubAccessGuard: ClubAccessGuard
 ) {
+
+    private val teamBalancer = TeamBalancer()
 
     @Transactional
     fun generateTeams(
         matchId: MatchId,
+        userId: UserId,
         mode: TeamGenerationMode,
         manualTeamA: List<ClubMemberId>?,
         manualTeamB: List<ClubMemberId>?
     ): MatchModel {
-        val match = matchRepository.findByIdOrNull(matchId)
-            ?: throw MatchNotFoundException()
-
-        val assignment = when (mode) {
-            TeamGenerationMode.AUTO -> {
-                val enrolled = matchAnnouncementService.getEnrolledPlayersByMatch(matchId)
-                if (enrolled.size < 2) throw InvalidTeamGenerationRequestException(
-                    "At least 2 enrolled players are required for AUTO mode"
-                )
-                autoAssignTeams(enrolled)
-            }
-            TeamGenerationMode.MANUAL -> manualAssignTeams(
-                teamA = manualTeamA,
-                teamB = manualTeamB
-            )
+        val match = matchService.findMatchEntity(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        if (match.status != SCHEDULED) {
+            throw InvalidTeamGenerationRequestException("Teams can only be generated for scheduled matches")
         }
 
-        matchTeamPlayerRepository.deleteByMatchId(matchId)
-        matchTeamPlayerRepository.saveAll(
-            assignment.first.map {
-                MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_A.toEntitySide())
-            } + assignment.second.map {
-                MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_B.toEntitySide())
-            }
+        val enrolled = matchAnnouncementService.getEnrolledPlayersByMatch(matchId = matchId)
+        val (teamA, teamB) = when (mode) {
+            TeamGenerationMode.AUTO -> autoAssignTeams(clubId = match.clubId, enrolled = enrolled)
+            TeamGenerationMode.MANUAL -> manualAssignTeams(teamA = manualTeamA, teamB = manualTeamB, enrolled = enrolled)
+        }
+
+        matchTeamPlayerRepository.deleteAllByMatchIdInBulk(matchId = matchId)
+        matchTeamPlayerRepository.saveAllAndFlush(
+            teamA.map { MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_A.toEntitySide()) } +
+                teamB.map { MatchTeamPlayerEntity(matchId = matchId, clubMemberId = it, teamSide = TEAM_B.toEntitySide()) }
         )
 
-        val savedPlayers = matchTeamPlayerRepository.findAllByMatchId(matchId)
-        val events = matchEventRepository.findAllByMatchId(matchId)
-        val enrolledPlayers = matchAnnouncementService.getEnrolledPlayersByMatch(matchId)
-        return match.toMatchModel(players = savedPlayers, events = events, enrolledPlayers = enrolledPlayers)
+        return matchService.loadMatch(matchId = matchId)
     }
 
-    private fun autoAssignTeams(memberIds: List<ClubMemberId>): Pair<List<ClubMemberId>, List<ClubMemberId>> {
-        val shuffled = memberIds.shuffled(Random(Instant.now().toEpochMilli()))
-        val teamA = shuffled.take(shuffled.size / 2 + shuffled.size % 2)
-        val teamB = shuffled.drop(teamA.size)
-        return teamA to teamB
+    private fun autoAssignTeams(clubId: ClubId, enrolled: List<ClubMemberId>): Pair<List<ClubMemberId>, List<ClubMemberId>> {
+        val members = clubMembershipProvider.findMembers(clubId = clubId, memberIds = enrolled)
+        val ratings = playerRatingService.ratingsFor(clubId = clubId, memberIds = members.map { it.memberId })
+        val players = members.map {
+            PlayerProfile(memberId = it.memberId, position = it.position, rating = ratings.getValue(it.memberId))
+        }
+
+        if (players.size < 2) {
+            throw InvalidTeamGenerationRequestException("At least 2 enrolled players are required for AUTO mode")
+        }
+
+        val assignment = teamBalancer.balance(players = players)
+        return assignment.teamA.map { it.memberId } to assignment.teamB.map { it.memberId }
     }
 
     private fun manualAssignTeams(
         teamA: List<ClubMemberId>?,
-        teamB: List<ClubMemberId>?
+        teamB: List<ClubMemberId>?,
+        enrolled: List<ClubMemberId>
     ): Pair<List<ClubMemberId>, List<ClubMemberId>> {
-        val safeTeamA = teamA?.distinct() ?: emptyList()
-        val safeTeamB = teamB?.distinct() ?: emptyList()
+        val safeTeamA = teamA?.distinct().orEmpty()
+        val safeTeamB = teamB?.distinct().orEmpty()
 
         if (safeTeamA.isEmpty() || safeTeamB.isEmpty()) {
             throw InvalidTeamGenerationRequestException("Manual mode requires non-empty teamA and teamB")
         }
-        val all = safeTeamA + safeTeamB
-        if (all.size != all.toSet().size) {
+        if (safeTeamA.any { it in safeTeamB }) {
             throw InvalidTeamGenerationRequestException("A player cannot be in both teams")
         }
-        if (kotlin.math.abs(safeTeamA.size - safeTeamB.size) > 1) {
+        if (abs(safeTeamA.size - safeTeamB.size) > 1) {
             throw InvalidTeamGenerationRequestException("Team sizes must be balanced (difference ≤ 1)")
+        }
+        if (!enrolled.containsAll(safeTeamA + safeTeamB)) {
+            throw InvalidTeamGenerationRequestException("Only enrolled players can be assigned to a team")
         }
 
         return safeTeamA to safeTeamB

@@ -16,6 +16,7 @@ import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEventEntity
 import com.kikepb.squadfy.infrastructure.database.entities.MatchTeamPlayerEntity
 import com.kikepb.squadfy.infrastructure.database.entities.MatchTeamPlayerEntity.TeamSideEntity
+import java.time.ZoneId
 
 fun MatchEntity.toMatchModel(
     players: List<MatchTeamPlayerEntity> = emptyList(),
@@ -57,7 +58,8 @@ fun ClubMatchScheduleEntity.toClubMatchScheduleModel(): ClubMatchScheduleModel =
         clubId = clubId,
         matchDayOfWeek = matchDayOfWeek,
         matchTime = matchTime,
-        matchAnnouncementOpenDaysBeforeMatch = matchAnnouncementOpenDaysBeforeMatch,
+        timeZone = ZoneId.of(timeZone),
+        format = format,
         maxPlayers = maxPlayers,
         isActive = isActive,
         createdAt = createdAt,
@@ -83,5 +85,6 @@ fun MatchAnnouncementEntryEntity.toMatchAnnouncementEntryModel(): MatchAnnouncem
         id = requireNotNull(id),
         matchAnnouncementId = matchAnnouncementId,
         clubMemberId = clubMemberId,
+        status = status,
         enrolledAt = enrolledAt
     )

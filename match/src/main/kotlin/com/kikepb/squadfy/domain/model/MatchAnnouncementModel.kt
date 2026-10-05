@@ -19,8 +19,11 @@ data class MatchAnnouncementModel(
     val createdAt: Instant,
     val updatedAt: Instant
 ) {
-    val enrolledCount: Int get() = entries.size
-    val isFull: Boolean get() = enrolledCount >= maxPlayers
+    val confirmedEntries: List<MatchAnnouncementEntryModel> get() = entries.filter { it.status == MatchAnnouncementEntryModel.EntryStatus.CONFIRMED }
+    val waitlistEntries: List<MatchAnnouncementEntryModel> get() = entries.filter { it.status == MatchAnnouncementEntryModel.EntryStatus.WAITLISTED }
+
+    fun isOpenAt(now: Instant): Boolean =
+        status == MatchAnnouncementStatus.OPEN && !now.isBefore(opensAt) && now.isBefore(closesAt)
 
     enum class MatchAnnouncementStatus {
         OPEN,
@@ -33,5 +36,11 @@ data class MatchAnnouncementEntryModel(
     val id: MatchAnnouncementEntryId,
     val matchAnnouncementId: MatchAnnouncementId,
     val clubMemberId: ClubMemberId,
+    val status: EntryStatus,
     val enrolledAt: Instant
-)
+) {
+    enum class EntryStatus {
+        CONFIRMED,
+        WAITLISTED
+    }
+}
