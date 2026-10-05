@@ -37,14 +37,10 @@ class ClubMatchScheduleEntity(
     var matchDayOfWeek: DayOfWeek,
     @Column(name = "match_time", nullable = false)
     var matchTime: LocalTime,
-    @Column(
-        name = "time_zone",
-        nullable = false,
-        columnDefinition = "varchar(64) not null default '$DEFAULT_CLUB_TIME_ZONE'"
-    )
+    @Column(name = "time_zone", nullable = false, length = 64)
     var timeZone: String = DEFAULT_CLUB_TIME_ZONE,
     @Enumerated(EnumType.STRING)
-    @Column(name = "format", nullable = false, columnDefinition = "varchar(16) not null default 'ELEVEN_A_SIDE'")
+    @Column(name = "format", nullable = false, length = 16)
     var format: MatchFormat = MatchFormat.ELEVEN_A_SIDE,
     /** Derived from [format]; kept as a column so announcements can copy it. */
     @Column(name = "max_players", nullable = false)

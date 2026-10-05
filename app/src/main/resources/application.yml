@@ -1,63 +1,64 @@
+# Every infrastructure value comes from environment variables (see .env.example).
+# Defaults target the local stack started with `docker compose up` (docker-compose.yml).
 spring:
   application:
     name: squadfy
 
-  data:
-    redis:
-      host: "redis-18199.crce202.eu-west-3-1.ec2.redns.redis-cloud.com"
-      password: ${REDIS_PASSWORD}
-      username: "default"
-      port: 18199
-      connect-timeout: 5000ms
-      timeout: 2000ms
-
   datasource:
-    url: jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require
-    username: postgres.whuvrfyzegghgckbciuz
-    password: ${POSTGRES_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/squadfy}
+    username: ${DB_USERNAME:squadfy}
+    password: ${DB_PASSWORD:squadfy}
     driver-class-name: org.postgresql.Driver
-
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
       connection-timeout: 20000
       idle-timeout: 300000
-      max-lifetime: 12000000
+      max-lifetime: 1800000
       validation-timeout: 5000
-      pool-name: SpringBootHikariCP
+      pool-name: SquadfyHikariCP
       data-source-properties:
         prepareThreshold: 5
         preparedStatementCacheQueries: 256
         preparedStatementCacheSizeMiB: 5
-
         tcpKeepAlive: true
         socketTimeout: 30
         connectTimeout: 10
 
+  # The schema is owned by Flyway (app/src/main/resources/db/migration); Hibernate only validates it.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: user_service,chat_service,notification_service,club_service,match_service
+    default-schema: public
+    create-schemas: true
+    baseline-on-migrate: true
+    baseline-version: 1
+
   jpa:
+    hibernate:
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  mail:
-    host: smtp.mailgun.org
-    username: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
-    port: 587
-    password: ${MAILGUN_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: 5000ms
+      timeout: 2000ms
 
   rabbitmq:
-    host: seal.lmq.cloudamqp.com
-    password: ${RABBITMQ_PASSWORD}
-    username: twaazkej
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
     ssl:
-      enabled: true
-    virtual-host: twaazkej
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
     listener:
       simple:
         acknowledge-mode: auto
@@ -72,36 +73,47 @@ spring:
           max-attempts: 3
           multiplier: 2
 
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
 jwt:
   secret: ${JWT_SECRET_BASE64}
-  expiration-minutes: 15
+  expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
 
 squadfy:
   rate-limit:
     ip:
-      apply-limit: false
+      apply-limit: ${RATE_LIMIT_ENABLED:false}
   email:
-    from: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
-    to: freyiloijeiyi-4579@yopmail.com
-    url: "http://localhost:8080"
+    from: ${MAIL_FROM:no-reply@squadfy.local}
+    url: ${APP_PUBLIC_URL:http://localhost:8080}
     verification:
       expiry-hours: 24
     reset-password:
       expiry-minutes: 30
   web-socket:
-    allowed-origin: "http://localhost:8080"
+    allowed-origin: ${WEBSOCKET_ALLOWED_ORIGIN:http://localhost:8080}
 
 nginx:
+  require-proxy: ${NGINX_REQUIRE_PROXY:true}
   trusted-ips:
     - "127.0.0.1" # nginx on same machine
-    - "::1" # IPv6 localhost"
+    - "::1" # IPv6 localhost
     - "172.17.0.0/16" # nginx container IP when using Docker
     - "10.0.0.5/32" # nginx server IP (if separate machine)
 
 supabase:
-  url: "https://aws-1-eu-west-3.pooler.supabase.com"
-  project-url: "https://whuvrfyzegghgckbciuz.supabase.co"
-  service-key: ${SUPABASE_SERVICE_KEY}
+  project-url: ${SUPABASE_PROJECT_URL:http://localhost:54321}
+  service-key: ${SUPABASE_SERVICE_KEY:}
 
 firebase:
-  credentials-path: "classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json"
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json}

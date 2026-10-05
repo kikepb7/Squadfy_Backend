@@ -1,22 +1,6 @@
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate
-  mail:
-    host: smtp.mailgun.org
-    username: postmaster@sandbox7c8ea83d9ec34476ba4d94ea9e7bf98c.mailgun.org
-
-jwt:
-  expiration-minutes: 15
-
-nginx:
-  require-proxy: true
-
+# Production: behind a reverse proxy (nginx.require-proxy defaults to true), with rate limiting.
+# Infrastructure comes from environment variables (see .env.example).
 squadfy:
-  email:
-    url: "https://www.kikepb.com"
   rate-limit:
     ip:
-      apply-limit: true
-  web-socket:
-    allowed-origin: "http://squadfy.com"
+      apply-limit: ${RATE_LIMIT_ENABLED:true}

@@ -18,14 +18,14 @@ import java.time.Instant
 
 @Entity
 @Table(
-    name = "callup_entries",
+    name = "match_announcement_entries",
     schema = "match_service",
     indexes = [
-        Index(name = "idx_callup_entries_callup_id", columnList = "callup_id"),
-        Index(name = "idx_callup_entries_club_member_id", columnList = "club_member_id"),
+        Index(name = "idx_match_announcement_entries_announcement_id", columnList = "match_announcement_id"),
+        Index(name = "idx_match_announcement_entries_club_member_id", columnList = "club_member_id"),
         Index(
-            name = "idx_callup_entries_callup_member",
-            columnList = "callup_id,club_member_id",
+            name = "idx_match_announcement_entries_announcement_member",
+            columnList = "match_announcement_id,club_member_id",
             unique = true
         )
     ]
@@ -34,12 +34,12 @@ class MatchAnnouncementEntryEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: MatchAnnouncementEntryId? = null,
-    @Column(name = "callup_id", nullable = false, updatable = false)
+    @Column(name = "match_announcement_id", nullable = false, updatable = false)
     var matchAnnouncementId: MatchAnnouncementId,
     @Column(name = "club_member_id", nullable = false, updatable = false)
     var clubMemberId: ClubMemberId,
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "varchar(16) not null default 'CONFIRMED'")
+    @Column(name = "status", nullable = false, length = 16)
     var status: EntryStatus = EntryStatus.CONFIRMED,
     @CreationTimestamp
     var enrolledAt: Instant = Instant.now()

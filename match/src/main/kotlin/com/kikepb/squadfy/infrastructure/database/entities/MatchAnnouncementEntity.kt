@@ -20,12 +20,11 @@ import java.time.Instant
 
 @Entity
 @Table(
-    name = "callups",
+    name = "match_announcements",
     schema = "match_service",
     indexes = [
-        Index(name = "idx_callups_match_id", columnList = "match_id", unique = true),
-        Index(name = "idx_callups_club_id", columnList = "club_id"),
-        Index(name = "idx_callups_status", columnList = "status")
+        Index(name = "idx_match_announcements_club_id", columnList = "club_id"),
+        Index(name = "idx_match_announcements_status", columnList = "status")
     ]
 )
 class MatchAnnouncementEntity(

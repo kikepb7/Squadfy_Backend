@@ -21,4 +21,12 @@ dependencies {
 	implementation(libs.spring.boot.starter.amqp)
     implementation(libs.jackson.datatype)
 	runtimeOnly(libs.postgresql)
+
+	implementation(libs.spring.boot.starter.flyway)
+	runtimeOnly(libs.flyway.database.postgresql)
+
+	testImplementation(libs.spring.boot.data.jpa.test)
+	testImplementation(libs.spring.boot.testcontainers)
+	testImplementation(libs.testcontainers.postgresql)
+	testImplementation(libs.testcontainers.junit.jupiter)
 }

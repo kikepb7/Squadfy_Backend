@@ -43,6 +43,8 @@ kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 
 # Database
 postgresql = { module = "org.postgresql:postgresql" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 
 # HTTP
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
