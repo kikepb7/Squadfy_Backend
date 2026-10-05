@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.kikepb.squadfy.domain.events.SquadfyEvent
+import com.kikepb.squadfy.domain.events.chat.ChatEvent
+import com.kikepb.squadfy.domain.events.club.ClubEvent
+import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.events.chat.ChatEventConstant
 import com.kikepb.squadfy.domain.events.user.UserEventConstants
 import org.springframework.amqp.core.Binding
@@ -15,6 +18,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.TopicExchange
 import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper
 import org.springframework.amqp.support.converter.Jackson2JavaTypeMapper
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
 import org.springframework.beans.factory.annotation.Qualifier
@@ -45,8 +49,21 @@ class RabbitMqConfig {
             )
         }
 
-        return Jackson2JsonMessageConverter(objectMapper).apply {
+        // Only our own event classes may be instantiated from the __TypeId__ header (the default
+        // only trusts java.util / java.lang, which rejected every event). Matching is per exact
+        // package, so every event family is listed.
+        val typeMapper = DefaultJackson2JavaTypeMapper().apply {
+            setTrustedPackages(
+                SquadfyEvent::class.java.packageName,
+                UserEvent::class.java.packageName,
+                ChatEvent::class.java.packageName,
+                ClubEvent::class.java.packageName
+            )
             typePrecedence = Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID
+        }
+
+        return Jackson2JsonMessageConverter(objectMapper).apply {
+            javaTypeMapper = typeMapper
         }
     }
 
