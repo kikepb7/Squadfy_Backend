@@ -7,15 +7,12 @@ import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.Club
 import com.kikepb.squadfy.infrastructure.database.entities.ClubParticipantEntity
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMemberRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubParticipantRepository
+import com.kikepb.squadfy.testing.PostgresTestContainerConfiguration
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.context.annotation.Import
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.postgresql.PostgreSQLContainer
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -28,16 +25,8 @@ import kotlin.test.assertTrue
     ]
 )
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import(ClubMembershipQueryService::class)
+@Import(PostgresTestContainerConfiguration::class, ClubMembershipQueryService::class)
 class ClubMembershipQueryServiceIntegrationTest {
-
-    companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16-alpine")
-    }
 
     @Autowired lateinit var service: ClubMembershipQueryService
     @Autowired lateinit var memberRepository: ClubMemberRepository

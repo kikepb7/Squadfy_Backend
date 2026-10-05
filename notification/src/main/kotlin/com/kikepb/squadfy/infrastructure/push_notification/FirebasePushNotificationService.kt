@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service
 class FirebasePushNotificationService(
     @param:Value("\${firebase.credentials-path}")
     private val credentialsPath: String,
+    @param:Value("\${firebase.enabled:true}")
+    private val enabled: Boolean,
     private val resourceLoader: ResourceLoader
 ) {
 
@@ -27,6 +29,10 @@ class FirebasePushNotificationService(
 
     @PostConstruct
     fun initialize() {
+        if (!enabled) {
+            logger.warn("Firebase is disabled (firebase.enabled=false): push notifications will not be sent")
+            return
+        }
         try {
             val serviceAccount = resourceLoader.getResource(credentialsPath)
 
@@ -43,6 +49,8 @@ class FirebasePushNotificationService(
     }
 
     fun isValidToken(token: String): Boolean {
+        if (!enabled) return true
+
         val message = Message.builder()
             .setToken(token)
             .build()
@@ -57,6 +65,15 @@ class FirebasePushNotificationService(
     }
 
     fun sendNotification(notification: PushNotificationModel): PushNotificationSendResultModel {
+        if (!enabled) {
+            logger.debug("Firebase disabled, skipping push notification ${notification.id}")
+            return PushNotificationSendResultModel(
+                succeeded = emptyList(),
+                temporaryFailures = emptyList(),
+                permanentFailures = emptyList()
+            )
+        }
+
         val messages = notification.recipients.map { recipient ->
             Message.builder()
                 .setToken(recipient.token)

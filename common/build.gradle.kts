@@ -1,5 +1,6 @@
 plugins {
     id("java-library")
+    id("java-test-fixtures")
     id("squadfy.kotlin-common")
 }
 
@@ -18,4 +19,10 @@ dependencies {
     runtimeOnly(libs.jwt.jackson)
 
     testImplementation(kotlin("test"))
+
+    // Shared Testcontainers configurations for the other modules' tests (src/testFixtures)
+    testFixturesApi(libs.spring.boot.test)
+    testFixturesApi(libs.spring.boot.testcontainers)
+    testFixturesApi(libs.testcontainers.postgresql)
+    testFixturesApi(libs.testcontainers.rabbitmq)
 }

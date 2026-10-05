@@ -19,18 +19,15 @@ import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.service.MatchTeamService.TeamGenerationMode
+import com.kikepb.squadfy.testing.PostgresTestContainerConfiguration
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.postgresql.PostgreSQLContainer
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
@@ -56,8 +53,8 @@ import kotlin.test.assertTrue
     ]
 )
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
 @Import(
+    PostgresTestContainerConfiguration::class,
     MatchFlowIntegrationTest.TestBeans::class,
     ClubAccessGuard::class,
     ClubMatchScheduleService::class,
@@ -72,11 +69,6 @@ import kotlin.test.assertTrue
 class MatchFlowIntegrationTest {
 
     companion object {
-        @Container
-        @ServiceConnection
-        @JvmStatic
-        val postgres = PostgreSQLContainer("postgres:16-alpine")
-
         val MADRID: ZoneId = ZoneId.of("Europe/Madrid")
     }
 

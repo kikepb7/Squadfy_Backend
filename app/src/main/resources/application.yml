@@ -116,4 +116,5 @@ supabase:
   service-key: ${SUPABASE_SERVICE_KEY:}
 
 firebase:
+  enabled: ${FIREBASE_ENABLED:true}
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json}
