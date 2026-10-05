@@ -1,0 +1,12 @@
+# Build outputs and local tooling
+**/build/
+**/.gradle/
+.kotlin/
+.idea/
+.claude/
+.git/
+**/.DS_Store
+
+# Secrets must be provided at runtime (env vars / mounted files), never baked into the image
+.env
+**/firebase-credentials/

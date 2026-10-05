@@ -1,0 +1,77 @@
+# Local development stack.
+#   docker compose up -d                      -> infrastructure only; run the app with
+#                                                ./gradlew :app:bootRun --args='--spring.profiles.active=dev'
+#   docker compose --profile app up --build   -> infrastructure + the application container
+# Host ports are configurable (POSTGRES_PORT, RABBITMQ_PORT, REDIS_PORT, MAIL_PORT, APP_PORT...) if a default is taken.
+# Mailpit UI (captured emails): http://localhost:8025 · RabbitMQ UI: http://localhost:15672 (guest/guest)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: squadfy
+      POSTGRES_USER: squadfy
+      POSTGRES_PASSWORD: squadfy
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U squadfy -d squadfy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_UI_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAIL_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  app:
+    profiles: ["app"]
+    build: .
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/squadfy
+      DB_USERNAME: squadfy
+      DB_PASSWORD: squadfy
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+      MAIL_HOST: mailpit
+      # Local-only default; real environments must provide their own secret.
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-bG9jYWwtZGV2LW9ubHktc3F1YWRmeS1qd3Qtc2VjcmV0LWtleS0wMDA=}
+      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
