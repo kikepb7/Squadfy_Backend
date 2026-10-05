@@ -1,6 +1,6 @@
 # 006 — Preparación para producción
 
-- **Estado**: Borrador — **bloquea el despliegue del MVP**
+- **Estado**: Hecha (rama `production-readiness-feature`), salvo R-8 y R-9, movidos a la rama `api-consistency`
 - **Módulos**: todos, build-logic, app
 - **Dependencias**: ninguna (se puede hacer en paralelo a 001–005)
 
@@ -8,7 +8,7 @@
 Que el backend se pueda construir de forma reproducible, arrancar contra una base de datos limpia, configurarse por entorno, observarse y desplegarse automáticamente.
 
 ## Requisitos
-- **R-1 Builds reproducibles**: Spring Boot en versión GA (última 4.0.x estable), sin repositorios snapshot/milestone; `gradlew` ejecutable en git.
+- **R-1 Builds reproducibles**: Spring Boot en versión GA (4.1.1), sin repositorios snapshot/milestone; `gradlew` ejecutable en git.
 - **R-2 Migraciones**: Flyway con una migración baseline por esquema (`user_service`, `club_service`, `match_service`, `chat_service`, `notification_service`) generada a partir del esquema actual; `ddl-auto: validate` en todos los perfiles.
 - **R-3 Configuración**: todo host, usuario y URL de infraestructura por variable de entorno (con valores por defecto solo para local). Sin direcciones de email de prueba en la config base. Documentado en `.env.example`.
 - **R-4 Contenedor**: `Dockerfile` multi-stage (build con JDK 21, runtime JRE 21, usuario no root) y `docker-compose.yml` para desarrollo local (Postgres, RabbitMQ, Redis).

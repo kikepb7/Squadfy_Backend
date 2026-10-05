@@ -28,13 +28,13 @@ Principios no negociables. Toda spec, plan y PR debe cumplirlos; si una feature 
 ## 5. Datos consistentes
 - Las invariantes se protegen en base de datos (índices únicos, NOT NULL) además de en código.
 - Operaciones con concurrencia (cupos, inscripciones) usan bloqueo o restricciones, no solo comprobaciones previas.
-- Los cambios de esquema se hacen con migraciones versionadas (Flyway) — ver spec 006.
+- Los cambios de esquema se hacen con migraciones versionadas de Flyway (`app/src/main/resources/db/migration`); una migración aplicada no se modifica nunca.
 
 ## 6. API coherente
 - Errores con formato `{ "code": "...", "message": "..." }` (o `errors: []` en validación) y códigos HTTP correctos: 400 validación/regla, 403 permisos, 404 no encontrado, 409 conflicto.
 - DTOs de API separados de modelos de dominio y entidades JPA. Mapeo en `api/mappers` e `infrastructure/database/mappers`.
 
 ## 7. Calidad mínima para merge
-- `sh ./gradlew build` en verde (compila y pasa tests).
-- Tests unitarios para lógica de dominio nueva; tests de integración (Testcontainers) para flujos críticos cuando la infraestructura esté disponible (spec 006).
+- `./gradlew build` en verde (compila, tests unitarios y de integración), igual que la CI.
+- Tests unitarios para lógica de dominio nueva; tests de integración con Testcontainers (`common/src/testFixtures`) para flujos críticos y para cada nuevo evento entre módulos.
 - Sin código muerto ni clases duplicadas.

@@ -8,4 +8,4 @@ Formato: `- [ ] T<n> [P?] <descripción> — <ficheros>`. `[P]` = paralelizable.
 ## Fase 2 — Implementación
 
 ## Fase 3 — Tests y verificación
-- [ ] Tn `sh ./gradlew build` en verde
+- [ ] Tn `./gradlew build` en verde

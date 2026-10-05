@@ -2,7 +2,7 @@
 
 Backend para gestionar clubes deportivos (fútbol amateur): clubes con código de invitación, partido semanal con convocatoria (apuntarse/desapuntarse), sorteo de equipos equilibrados, estadísticas, chat y notificaciones.
 
-Kotlin 2.2 · JVM 21 · Spring Boot 4 · PostgreSQL (esquema por módulo) · RabbitMQ · Redis · Supabase Storage · Firebase.
+Kotlin 2.3 · JVM 21 · Spring Boot 4.1 · PostgreSQL (esquema por módulo, Flyway) · RabbitMQ · Redis · Supabase Storage · Firebase.
 
 ## Trabajo guiado por specs (SDD)
 - Todo cambio funcional parte de una spec en `specs/NNN-*/` (`spec.md` → `plan.md` → `tasks.md`). Usa la skill `sdd`.
@@ -14,12 +14,15 @@ Kotlin 2.2 · JVM 21 · Spring Boot 4 · PostgreSQL (esquema por módulo) · Rab
 Arquitectura, capas y reglas entre módulos: skill `squadfy-conventions`.
 
 ## Comandos
-Usa `sh ./gradlew` (el wrapper no es ejecutable en git). Detalle: skill `verify-backend`.
-- Compilar: `sh ./gradlew compileKotlin compileTestKotlin --console=plain`
-- Tests: `sh ./gradlew build -x :app:test --console=plain`
+Detalle: skill `verify-backend`. Arranque local: `README.md`.
+- Compilar: `./gradlew compileKotlin compileTestKotlin --console=plain`
+- Build completo (unit + integración con Testcontainers, requiere Docker): `./gradlew build --console=plain`
+- Stack local: `docker compose up -d` + `./gradlew :app:bootRun --args='--spring.profiles.active=dev'`
 
 ## Reglas rápidas
 - Permisos siempre en la capa de servicio y antes de cualquier efecto (`ClubAccessGuard` en `match`).
 - Nada de SQL entre esquemas: usa puertos de `common/domain/<área>`.
 - Lógica de negocio pura en `domain/model` con `Clock` inyectado y tests unitarios.
+- Cambios de esquema solo con migraciones Flyway nuevas (`app/src/main/resources/db/migration/V<n>__*.sql`); nunca editar una ya aplicada.
+- Configuración de infraestructura solo por variables de entorno (documentarlas en `.env.example`).
 - Specs y docs en español; código en inglés.

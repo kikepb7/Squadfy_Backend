@@ -26,6 +26,7 @@ service                casos de uso @Service, @Transactional, permisos
 - **Nunca** SQL a tablas de otro esquema ni imports de otro módulo de feature.
 - Consulta síncrona → puerto en `common/domain/<área>/` implementado por el módulo dueño. Ejemplo: `ClubMembershipProvider` (club) usado por `match` vía `ClubAccessGuard`.
 - Notificación asíncrona → evento `SquadfyEvent` (sealed class en `common/domain/events/<área>/`), `EventPublisher.publish`, cola + binding en `RabbitMqConfig`, `@RabbitListener` en el consumidor.
+  - **Una familia de eventos nueva (paquete nuevo) debe añadirse a `setTrustedPackages` en `RabbitMqConfig`**; si no, los listeners rechazan los mensajes en silencio. Cúbrelo con un test como `app/.../EventMessagingIntegrationTest.kt`.
 
 ## Seguridad
 - Usuario actual: `requestUserId` (`common/api/util/RequestUserId.kt`), solo en controladores; pásalo como `userId` al servicio.
@@ -38,7 +39,11 @@ service                casos de uso @Service, @Transactional, permisos
 - Invariantes en BD (índices únicos) además de en código. Concurrencia sobre cupos → `@Lock(PESSIMISTIC_WRITE)`.
 - Borrar y reinsertar en la misma transacción con índice único → borrado masivo `@Modifying @Query` (Hibernate hace flush de INSERT antes que DELETE).
 - Listados: evita N+1 con consultas `findAllBy...In` y agrupación en memoria.
-- Cambios de esquema: migración Flyway (cuando exista, spec 006); mientras tanto documenta el SQL manual necesario.
+- Cambios de esquema: **siempre** con una migración Flyway nueva `app/src/main/resources/db/migration/V<n>__<descripcion>.sql` (nunca editar una aplicada). Hibernate solo valida; `EmptyDatabaseMigrationTest` falla si entidad y migraciones divergen.
+
+## Configuración
+- Toda la infraestructura por variables de entorno con default local (`application.yml`), documentadas en `.env.example`. Nada de hosts ni secretos en el repo.
+- Integraciones externas opcionales en local con un flag (ej. `firebase.enabled`).
 
 ## Tiempo y fechas
 - Inyecta `java.time.Clock` (bean en `common/infrastructure/time/ClockConfig.kt`); nada de `Instant.now()` en lógica.
