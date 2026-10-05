@@ -1,11 +1,11 @@
 package com.kikepb.squadfy.api.dto
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.kikepb.squadfy.domain.club.PlayerPosition
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
-import jakarta.validation.constraints.Size
 
 data class JoinClubRequest(
     @field:NotBlank(message = "Invitation code is required")
@@ -19,7 +19,6 @@ data class JoinClubRequest(
     @field:Max(value = 999, message = "Shirt number must be lower than 1000")
     @JsonProperty("shirtNumber")
     val shirtNumber: Int? = null,
-    @field:Size(max = 120, message = "Position can have at most 120 characters")
     @JsonProperty("position")
-    val position: String? = null
+    val position: PlayerPosition? = null
 )

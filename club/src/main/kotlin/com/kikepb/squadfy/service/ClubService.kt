@@ -2,53 +2,38 @@ package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.exception.ClubCapacityReachedException
 import com.kikepb.squadfy.domain.exception.ClubInviteCodeInvalidException
-import com.kikepb.squadfy.domain.exception.ClubMatchNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubMembershipAlreadyExistsException
 import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubParticipantNotFoundException
+import com.kikepb.squadfy.domain.club.PlayerPosition
 import com.kikepb.squadfy.domain.exception.ForbiddenException
-import com.kikepb.squadfy.domain.exception.InvalidTeamGenerationRequestException
-import com.kikepb.squadfy.domain.model.ClubMatchModel
 import com.kikepb.squadfy.domain.model.ClubMemberModel
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole.PLAYER
 import com.kikepb.squadfy.domain.model.ClubModel
-import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_A
-import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_B
 import com.kikepb.squadfy.domain.type.ClubId
-import com.kikepb.squadfy.domain.type.ClubMatchId
-import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.ClubEntity
-import com.kikepb.squadfy.infrastructure.database.entities.ClubMatchEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity
-import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.*
-import com.kikepb.squadfy.infrastructure.database.entities.MatchTeamPlayerEntity
-import com.kikepb.squadfy.infrastructure.database.mappers.toClubMatchModel
+import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.ADMIN
+import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.OWNER
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubMemberModel
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubModel
 import com.kikepb.squadfy.infrastructure.database.mappers.toEntityRole
-import com.kikepb.squadfy.infrastructure.database.mappers.toEntitySide
-import com.kikepb.squadfy.infrastructure.database.repositories.ClubMatchRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMemberRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubRepository
-import com.kikepb.squadfy.infrastructure.database.repositories.MatchTeamPlayerRepository
-import com.kikepb.squadfy.service.ClubService.TeamGenerationMode.AUTO
-import com.kikepb.squadfy.service.ClubService.TeamGenerationMode.MANUAL
+import com.kikepb.squadfy.infrastructure.storage.SupabaseStorageService
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.security.SecureRandom
-import java.time.Instant
-import kotlin.random.Random
 
 @Service
 class ClubService(
     private val clubRepository: ClubRepository,
     private val clubMemberRepository: ClubMemberRepository,
-    private val clubMatchRepository: ClubMatchRepository,
-    private val matchTeamPlayerRepository: MatchTeamPlayerRepository,
-    private val clubParticipantService: ClubParticipantService
+    private val clubParticipantService: ClubParticipantService,
+    private val storageService: SupabaseStorageService
 ) {
     @Transactional
     fun createClub(userId: UserId, name: String, description: String?, clubLogoUrl: String?, maxMembers: Int?): ClubModel {
@@ -93,7 +78,7 @@ class ClubService(
     }
 
     @Transactional
-    fun joinClub(userId: UserId, invitationCode: String, shirtNumber: Int?, position: String?): ClubModel {
+    fun joinClub(userId: UserId, invitationCode: String, shirtNumber: Int?, position: PlayerPosition?): ClubModel {
         ensureUserExists(userId = userId)
 
         val normalizedCode = invitationCode.trim().uppercase()
@@ -110,7 +95,7 @@ class ClubService(
                 clubId = clubId,
                 userId = userId,
                 shirtNumber = shirtNumber,
-                position = position?.trim(),
+                position = position?.name,
                 role = PLAYER.toEntityRole()
             )
         )
@@ -119,10 +104,15 @@ class ClubService(
     }
 
     @Transactional
-    fun updateClubLogo(clubId: ClubId, userId: UserId, logoUrl: String): ClubModel {
+    fun updateClubLogo(clubId: ClubId, userId: UserId, bytes: ByteArray, mimeType: String): ClubModel {
         ensureCanManageClub(clubId = clubId, userId = userId)
         val club = clubRepository.findByIdOrNull(clubId) ?: throw ClubNotFoundException()
-        club.clubLogoUrl = logoUrl
+        club.clubLogoUrl = storageService.uploadImage(
+            bucket = CLUB_LOGO_BUCKET,
+            folder = CLUB_LOGO_FOLDER,
+            bytes = bytes,
+            mimeType = mimeType
+        )
         clubRepository.saveAndFlush(club)
         return club.toClubModel(membersCount = clubMemberRepository.countByClubId(clubId = clubId))
     }
@@ -143,75 +133,29 @@ class ClubService(
 
         return members.map { member ->
             val userSnapshot = member.userParticipant ?: throw ClubParticipantNotFoundException(userId = member.userId)
-            member.toClubMemberModel(username = userSnapshot.username, email = userSnapshot.email, profilePictureUrl = userSnapshot.profilePictureUrl)
+            member.toClubMemberModel(
+                username = userSnapshot.username,
+                email = userSnapshot.email,
+                profilePictureUrl = userSnapshot.profilePictureUrl
+            )
         }
     }
 
     @Transactional
-    fun createMatch(clubId: ClubId, userId: UserId, scheduledAt: Instant?): ClubMatchModel {
-        ensureCanManageClub(clubId = clubId, userId = userId)
-        if (!clubRepository.existsById(clubId)) throw ClubNotFoundException()
+    fun updateMyMembership(clubId: ClubId, userId: UserId, shirtNumber: Int?, position: PlayerPosition?): ClubMemberModel {
+        val membership = clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)
+            ?: throw ForbiddenException()
 
-        val match = clubMatchRepository.saveAndFlush(
-            ClubMatchEntity(
-                clubId = clubId,
-                createdByUserId = userId,
-                scheduledAt = scheduledAt ?: Instant.now()
-            )
+        shirtNumber?.let { membership.shirtNumber = it }
+        position?.let { membership.position = it.name }
+        clubMemberRepository.saveAndFlush(membership)
+
+        val participant = clubParticipantService.ensureExists(userId = userId)
+        return membership.toClubMemberModel(
+            username = participant.username,
+            email = participant.email,
+            profilePictureUrl = participant.profilePictureUrl
         )
-
-        return match.toClubMatchModel(assignments = emptyList())
-    }
-
-    @Transactional
-    fun generateTeams(
-        matchId: ClubMatchId,
-        userId: UserId,
-        mode: TeamGenerationMode,
-        manualTeamA: List<ClubMemberId>?,
-        manualTeamB: List<ClubMemberId>?
-    ): ClubMatchModel {
-        val match = clubMatchRepository.findByIdOrNull(id = matchId) ?: throw ClubMatchNotFoundException()
-        ensureCanManageClub(clubId = match.clubId, userId = userId)
-
-        val clubMembers = clubMemberRepository.findAllByClubIdOrderByCreatedAtAsc(clubId = match.clubId)
-        if (clubMembers.size < 2) throw InvalidTeamGenerationRequestException(message = "At least 2 members are required.")
-
-        val assignment = when (mode) {
-            AUTO -> autoAssignTeams(clubMembers.mapNotNull { it.id })
-            MANUAL -> manualAssignTeams(
-                clubMembers = clubMembers.mapNotNull { it.id }.toSet(),
-                teamA = manualTeamA,
-                teamB = manualTeamB
-            )
-        }
-
-        matchTeamPlayerRepository.deleteByMatchId(matchId = matchId)
-        matchTeamPlayerRepository.saveAll(
-            assignment.first.map {
-                MatchTeamPlayerEntity(
-                    matchId = matchId,
-                    clubMemberId = it,
-                    teamSide = TEAM_A.toEntitySide()
-                )
-            } + assignment.second.map {
-                MatchTeamPlayerEntity(
-                    matchId = matchId,
-                    clubMemberId = it,
-                    teamSide = TEAM_B.toEntitySide()
-                )
-            }
-        )
-
-        val savedAssignments = matchTeamPlayerRepository.findAllByMatchId(matchId = matchId)
-        return match.toClubMatchModel(assignments = savedAssignments)
-    }
-
-    fun getMatch(matchId: ClubMatchId, userId: UserId): ClubMatchModel {
-        val match = clubMatchRepository.findByIdOrNull(matchId) ?: throw ClubMatchNotFoundException()
-        ensureIsClubMember(clubId = match.clubId, userId = userId)
-        val assignments = matchTeamPlayerRepository.findAllByMatchId(matchId = matchId)
-        return match.toClubMatchModel(assignments = assignments)
     }
 
     private fun ensureCanManageClub(clubId: ClubId, userId: UserId) {
@@ -247,41 +191,8 @@ class ClubService(
         }
     }
 
-    private fun autoAssignTeams(memberIds: List<ClubMemberId>): Pair<List<ClubMemberId>, List<ClubMemberId>> {
-        val shuffled = memberIds.shuffled(Random(Instant.now().toEpochMilli()))
-        val splitIndex = shuffled.size / 2
-        val teamA = shuffled.take(splitIndex + (shuffled.size % 2))
-        val teamB = shuffled.drop(teamA.size)
-        return teamA to teamB
-    }
-
-    private fun manualAssignTeams(
-        clubMembers: Set<ClubMemberId>,
-        teamA: List<ClubMemberId>?,
-        teamB: List<ClubMemberId>?
-    ): Pair<List<ClubMemberId>, List<ClubMemberId>> {
-        val safeTeamA = teamA?.distinct() ?: emptyList()
-        val safeTeamB = teamB?.distinct() ?: emptyList()
-        if (safeTeamA.isEmpty() || safeTeamB.isEmpty()) {
-            throw InvalidTeamGenerationRequestException(message = "Manual mode requires non-empty teamA and teamB.")
-        }
-
-        val allManualMembers = safeTeamA + safeTeamB
-        if (allManualMembers.size != allManualMembers.toSet().size) {
-            throw InvalidTeamGenerationRequestException(message = "A player cannot be in both teams.")
-        }
-        if (!clubMembers.containsAll(allManualMembers)) {
-            throw InvalidTeamGenerationRequestException(message = "All players must belong to the club.")
-        }
-        if (kotlin.math.abs(safeTeamA.size - safeTeamB.size) > 1) {
-            throw InvalidTeamGenerationRequestException(message = "Team sizes must be balanced (difference <= 1).")
-        }
-
-        return safeTeamA to safeTeamB
-    }
-
-    enum class TeamGenerationMode {
-        AUTO,
-        MANUAL
+    private companion object {
+        const val CLUB_LOGO_BUCKET = "profile-pictures"
+        const val CLUB_LOGO_FOLDER = "clubs"
     }
 }

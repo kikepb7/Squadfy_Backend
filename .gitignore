@@ -14,3 +14,11 @@
 /notification/build/
 /notification/build/classes/kotlin/main/
 /user/build/
+# Build outputs of every module
+**/build/
+.kotlin/
+
+# OS / local tooling
+.DS_Store
+.claude/worktrees/
+.claude/settings.local.json

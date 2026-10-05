@@ -14,6 +14,7 @@ interface ClubMemberRepository : JpaRepository<ClubMemberEntity, ClubMemberId> {
     fun findByClubIdAndUserId(clubId: ClubId, userId: UserId): ClubMemberEntity?
     fun findAllByUserIdOrderByCreatedAtDesc(userId: UserId): List<ClubMemberEntity>
     fun findAllByClubIdOrderByCreatedAtAsc(clubId: ClubId): List<ClubMemberEntity>
+    fun findAllByClubIdAndIdIn(clubId: ClubId, ids: Collection<ClubMemberId>): List<ClubMemberEntity>
 
     @Query(
         """
