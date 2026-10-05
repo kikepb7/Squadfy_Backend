@@ -1,6 +1,15 @@
+import org.jetbrains.kotlin.allopen.gradle.AllOpenExtension
+
 plugins {
     id("squadfy.kotlin-common")
     id("io.spring.dependency-management")
+}
+
+// JPA entities must be open so Hibernate can create lazy-loading proxies.
+configure<AllOpenExtension> {
+    annotation("jakarta.persistence.Entity")
+    annotation("jakarta.persistence.MappedSuperclass")
+    annotation("jakarta.persistence.Embeddable")
 }
 
 dependencies {

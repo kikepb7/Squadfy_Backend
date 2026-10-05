@@ -4,15 +4,6 @@ plugins {
     kotlin("plugin.jpa")
 }
 
-group = "org.example"
-version = "unspecified"
-
-repositories {
-    mavenCentral()
-    maven { url = uri("https://repo.spring.io/milestone") }
-    maven { url = uri("https://repo.spring.io/snapshot") }
-}
-
 dependencies {
     implementation(projects.common)
 
@@ -28,8 +19,4 @@ dependencies {
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit.jupiter)
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
