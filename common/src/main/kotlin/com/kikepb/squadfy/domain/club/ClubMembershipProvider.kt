@@ -13,4 +13,6 @@ interface ClubMembershipProvider {
     fun findMembership(clubId: ClubId, userId: UserId): ClubMembershipSnapshot?
 
     fun findMembers(clubId: ClubId, memberIds: Collection<ClubMemberId>): List<ClubMembershipSnapshot>
+
+    fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot>
 }

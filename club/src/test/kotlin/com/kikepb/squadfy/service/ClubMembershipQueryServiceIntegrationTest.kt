@@ -65,4 +65,15 @@ class ClubMembershipQueryServiceIntegrationTest {
         assertEquals(setOf(first.id, second.id), found.map { it.memberId }.toSet())
         assertTrue(service.findMembers(clubId = clubId, memberIds = emptyList()).isEmpty())
     }
+
+    @Test
+    fun `finds every member of a club`() {
+        val clubId = UUID.randomUUID()
+        val members = List(3) { member(clubId, ClubMemberRoleEntity.PLAYER, position = null) }
+        member(UUID.randomUUID(), ClubMemberRoleEntity.PLAYER, position = null)
+
+        val found = service.findAllMembers(clubId = clubId)
+
+        assertEquals(members.map { it.id }.toSet(), found.map { it.memberId }.toSet())
+    }
 }

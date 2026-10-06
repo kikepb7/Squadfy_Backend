@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.dto
 
+import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchId
 
 data class TeamBalanceDto(
@@ -15,5 +16,12 @@ data class TeamBalanceDto(
 data class TeamStrengthDto(
     val players: Int,
     val averageRating: Int,
-    val totalRating: Int
+    val totalRating: Int,
+    /** Highest rating first. */
+    val playerRatings: List<TeamPlayerRatingDto>
+)
+
+data class TeamPlayerRatingDto(
+    val clubMemberId: ClubMemberId,
+    val rating: Int
 )

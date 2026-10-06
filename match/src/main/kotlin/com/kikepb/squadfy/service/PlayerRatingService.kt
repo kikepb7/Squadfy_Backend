@@ -1,10 +1,12 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.club.ClubMembershipProvider
 import com.kikepb.squadfy.domain.model.MatchEventType
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.PlayerRatingCalculator
 import com.kikepb.squadfy.domain.model.PlayerRatingCalculator.RatedPlayer
 import com.kikepb.squadfy.domain.model.PlayerRatingModel
+import com.kikepb.squadfy.domain.model.RatingLeaderboard
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchId
@@ -20,18 +22,44 @@ import org.springframework.transaction.annotation.Transactional
 class PlayerRatingService(
     private val playerRatingRepository: PlayerRatingRepository,
     private val playerRatingChangeRepository: PlayerRatingChangeRepository,
+    private val clubMembershipProvider: ClubMembershipProvider,
     private val clubAccessGuard: ClubAccessGuard
 ) {
 
+    /** Club classification by rating, visible to every member (spec 003 RN-11). */
+    fun getLeaderboard(clubId: ClubId, userId: UserId): List<RatingLeaderboard.RankedEntry> {
+        clubAccessGuard.requireMember(clubId = clubId, userId = userId)
+        return leaderboardOf(clubId = clubId)
+    }
+
     fun getMyRating(clubId: ClubId, userId: UserId): PlayerRatingModel {
         val memberId = clubAccessGuard.requireMember(clubId = clubId, userId = userId).memberId
-        val stored = playerRatingRepository.findAllByClubIdAndClubMemberIdIn(clubId = clubId, clubMemberIds = listOf(memberId))
-            .firstOrNull()
+        val leaderboard = leaderboardOf(clubId = clubId)
+        val mine = leaderboard.first { it.clubMemberId == memberId }
         return PlayerRatingModel(
             clubId = clubId,
             clubMemberId = memberId,
-            rating = stored?.rating ?: PlayerRatingCalculator.INITIAL_RATING,
-            matchesRated = stored?.matchesRated ?: 0
+            rating = mine.rating,
+            matchesRated = mine.matchesRated,
+            rank = mine.rank,
+            totalPlayers = leaderboard.size
+        )
+    }
+
+    private fun leaderboardOf(clubId: ClubId): List<RatingLeaderboard.RankedEntry> {
+        val memberIds = clubMembershipProvider.findAllMembers(clubId = clubId).map { it.memberId }
+        if (memberIds.isEmpty()) return emptyList()
+        val stored = playerRatingRepository.findAllByClubIdAndClubMemberIdIn(clubId = clubId, clubMemberIds = memberIds)
+            .associateBy { it.clubMemberId }
+
+        return RatingLeaderboard.rank(
+            memberIds.map { memberId ->
+                RatingLeaderboard.Entry(
+                    clubMemberId = memberId,
+                    rating = stored[memberId]?.rating ?: PlayerRatingCalculator.INITIAL_RATING,
+                    matchesRated = stored[memberId]?.matchesRated ?: 0
+                )
+            }
         )
     }
 

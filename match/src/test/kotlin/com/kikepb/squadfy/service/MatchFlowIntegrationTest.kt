@@ -304,7 +304,33 @@ class MatchFlowIntegrationTest {
         assertEquals(PlayerRatingCalculator.INITIAL_RATING, balance.teamA.averageRating)
         assertEquals(0.0, balance.averageRatingDifference)
         assertEquals(0.5, balance.teamAExpectedScore)
+        assertEquals(balance.teamA.playerRatings.map { it.clubMemberId }.toSet(), nextMatch().teamA.toSet())
         assertFailsWith<ForbiddenException> { teamService.getTeamBalance(matchId = match.id, userId = players.first()) }
+    }
+
+    @Test
+    fun `every member sees the club classification by rating`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        val players = enrollPlayers(announcementOf(match), count = 4)
+        val teams = teamService.generateTeams(match.id, owner, TeamGenerationMode.AUTO, null, null)
+        repeat(2) { eventService.addEvent(match.id, owner, teams.teamA.first(), MatchEventType.GOAL, null) }
+        clock.now = madrid("2026-10-08T21:30")
+        matchService.completeMatch(matchId = match.id, userId = owner)
+
+        val leaderboard = ratingService.getLeaderboard(clubId = clubId, userId = players.last())
+
+        assertEquals(5, leaderboard.size) // owner + 4 players
+        assertEquals(1, leaderboard.first().rank)
+        assertTrue(leaderboard.first().clubMemberId in teams.teamA)
+        val worstWinner = leaderboard.filter { it.clubMemberId in teams.teamA }.maxOf { it.rank }
+        val bestLoser = leaderboard.filter { it.clubMemberId in teams.teamB }.minOf { it.rank }
+        assertTrue(worstWinner < bestLoser)
+
+        val mine = ratingService.getMyRating(clubId = clubId, userId = players.last())
+        assertEquals(5, mine.totalPlayers)
+        assertEquals(leaderboard.single { it.clubMemberId == mine.clubMemberId }.rank, mine.rank)
+        assertFailsWith<NotClubMemberException> { ratingService.getLeaderboard(clubId = clubId, userId = UUID.randomUUID()) }
     }
 
     @Test
@@ -345,4 +371,7 @@ class FakeClubMembershipProvider : ClubMembershipProvider {
 
     override fun findMembers(clubId: ClubId, memberIds: Collection<ClubMemberId>): List<ClubMembershipSnapshot> =
         members.filter { it.clubId == clubId && it.memberId in memberIds }
+
+    override fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot> =
+        members.filter { it.clubId == clubId }
 }

@@ -25,7 +25,13 @@ Evolución posible (cuando haya volumen): TrueSkill/Glicko-2 para modelar la inc
 - `MatchTeamService.getTeamBalance(matchId, userId)`: `requireManager`, equipos desde `MatchService.loadMatch`, ratings desde `PlayerRatingService.ratingsFor`. Sin equipos → `InvalidMatchStateException` (409).
 - Endpoint en `MatchController`. Cuando exista la API v1 (spec de `api-consistency`) se expondrá en la nueva ruta.
 
+## Clasificación por rating (RN-11)
+- El puerto `ClubMembershipProvider` gana `findAllMembers(clubId)` (también lo necesitará la spec 005 para los destinatarios de notificaciones).
+- Dominio puro `RatingLeaderboard.rank(entries)`: orden por rating desc, partidos desc e id (estable); posición de competición sobre el rating redondeado (lo que ve el usuario).
+- `PlayerRatingService.getLeaderboard(clubId, userId)` (miembro) y `getMyRating` reutiliza la clasificación para devolver `rank` y `totalPlayers`.
+- La respuesta solo lleva `clubMemberId`; el cliente cruza nombre y foto con `GET /api/club/{clubId}/members`.
+
 ## Estrategia de test
 - Unitarios (hechos): `TeamBalancerTest` (tamaños 2–22, porteros, posiciones, nivel, estrellas, determinismo), `PlayerRatingCalculatorTest` (ganador/perdedor, empate, sorpresa, margen, suma cero individual, novatos).
-- Unitarios: `TeamBalanceModelTest` (CA-9, CA-10).
-- Integración: CA-4..CA-8 hechos; CA-11 y el cálculo extremo a extremo en `MatchFlowIntegrationTest`.
+- Unitarios: `TeamBalanceModelTest` (CA-9, CA-10, CA-12), `RatingLeaderboardTest` (CA-14).
+- Integración: CA-4..CA-8, CA-11 y CA-13 en `MatchFlowIntegrationTest`; `findAllMembers` en `ClubMembershipQueryServiceIntegrationTest`.

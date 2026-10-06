@@ -91,8 +91,8 @@ class MatchTeamService(
         val ratings = playerRatingService.ratingsFor(clubId = match.clubId, memberIds = match.teamA + match.teamB)
         return TeamBalanceModel.of(
             matchId = matchId,
-            teamARatings = match.teamA.map { ratings.getValue(it) },
-            teamBRatings = match.teamB.map { ratings.getValue(it) }
+            teamA = match.teamA.map { TeamBalanceModel.PlayerRating(clubMemberId = it, rating = ratings.getValue(it)) },
+            teamB = match.teamB.map { TeamBalanceModel.PlayerRating(clubMemberId = it, rating = ratings.getValue(it)) }
         )
     }
 

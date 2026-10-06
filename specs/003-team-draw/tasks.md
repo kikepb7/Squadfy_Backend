@@ -17,5 +17,11 @@
   - [x] T8b `MatchTeamService.getTeamBalance` con permiso de gestor y 409 sin equipos (CA-11)
   - [x] T8c `GET /api/matches/{matchId}/team-balance` + `TeamBalanceDto` + mapper
   - [x] T8d Test de integración en `MatchFlowIntegrationTest` (CA-9 extremo a extremo, CA-11)
-- [ ] T11 Pendiente de producto: ¿rating individual visible para gestores?
+- [x] T11 Decisión: ratings públicos en el club (clasificación) y rating individual en el equilibrio (2026-10-06).
+- [x] T12 Ratings individuales en el equilibrio de equipos (CA-12).
+- [x] T13 Clasificación por rating (RN-11):
+  - [x] T13a `ClubMembershipProvider.findAllMembers` + implementación en `club` + test de integración
+  - [x] T13b [P] `RatingLeaderboard` puro + `RatingLeaderboardTest` (CA-14)
+  - [x] T13c `GET /api/player-ratings/club/{clubId}` y `rank`/`totalPlayers` en `/me`
+  - [x] T13d Test de integración CA-13
 - [x] T10 Publicación automática de equipos al cerrar la convocatoria (`MatchTeamService.publishTeamsOnAnnouncementClosed`) + tests CA-7, CA-8.

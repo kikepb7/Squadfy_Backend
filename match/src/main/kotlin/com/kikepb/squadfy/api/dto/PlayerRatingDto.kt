@@ -8,5 +8,17 @@ data class PlayerRatingDto(
     val clubMemberId: ClubMemberId,
     val rating: Int,
     val matchesRated: Int,
+    val isProvisional: Boolean,
+    /** Position in the club classification (ties share the position). */
+    val rank: Int,
+    val totalPlayers: Int
+)
+
+/** Row of the club classification by rating. Name and photo come from GET /api/club/{clubId}/members. */
+data class RatingLeaderboardEntryDto(
+    val rank: Int,
+    val clubMemberId: ClubMemberId,
+    val rating: Int,
+    val matchesRated: Int,
     val isProvisional: Boolean
 )

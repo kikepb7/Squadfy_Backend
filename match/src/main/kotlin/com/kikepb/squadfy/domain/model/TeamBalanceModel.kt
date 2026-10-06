@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.domain.model
 
+import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchId
 
 /**
@@ -18,21 +19,27 @@ data class TeamBalanceModel(
         PlayerRatingCalculator.expectedScore(ratingA = teamA.averageRating, ratingB = teamB.averageRating)
 
     data class TeamStrength(
-        val players: Int,
-        val averageRating: Double,
-        val totalRating: Double
+        /** Highest rating first. */
+        val playerRatings: List<PlayerRating>
+    ) {
+        val players: Int get() = playerRatings.size
+        val averageRating: Double get() = playerRatings.map { it.rating }.average()
+        val totalRating: Double get() = playerRatings.sumOf { it.rating }
+    }
+
+    data class PlayerRating(
+        val clubMemberId: ClubMemberId,
+        val rating: Double
     )
 
     companion object {
-        fun of(matchId: MatchId, teamARatings: List<Double>, teamBRatings: List<Double>): TeamBalanceModel {
-            require(teamARatings.isNotEmpty() && teamBRatings.isNotEmpty()) { "Both teams need players" }
-            return TeamBalanceModel(matchId = matchId, teamA = strengthOf(teamARatings), teamB = strengthOf(teamBRatings))
+        fun of(matchId: MatchId, teamA: List<PlayerRating>, teamB: List<PlayerRating>): TeamBalanceModel {
+            require(teamA.isNotEmpty() && teamB.isNotEmpty()) { "Both teams need players" }
+            return TeamBalanceModel(
+                matchId = matchId,
+                teamA = TeamStrength(playerRatings = teamA.sortedByDescending { it.rating }),
+                teamB = TeamStrength(playerRatings = teamB.sortedByDescending { it.rating })
+            )
         }
-
-        private fun strengthOf(ratings: List<Double>) = TeamStrength(
-            players = ratings.size,
-            averageRating = ratings.average(),
-            totalRating = ratings.sum()
-        )
     }
 }

@@ -1,7 +1,9 @@
 package com.kikepb.squadfy.api.controllers
 
 import com.kikepb.squadfy.api.dto.PlayerRatingDto
+import com.kikepb.squadfy.api.dto.RatingLeaderboardEntryDto
 import com.kikepb.squadfy.api.mappers.toPlayerRatingDto
+import com.kikepb.squadfy.api.mappers.toRatingLeaderboardEntryDto
 import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.service.PlayerRatingService
@@ -15,6 +17,12 @@ import org.springframework.web.bind.annotation.RestController
 class PlayerRatingController(
     private val playerRatingService: PlayerRatingService
 ) {
+
+    @GetMapping("/club/{clubId}")
+    fun getLeaderboard(@PathVariable("clubId") clubId: ClubId): List<RatingLeaderboardEntryDto> =
+        playerRatingService
+            .getLeaderboard(clubId = clubId, userId = requestUserId)
+            .map { it.toRatingLeaderboardEntryDto() }
 
     @GetMapping("/club/{clubId}/me")
     fun getMyRating(@PathVariable("clubId") clubId: ClubId): PlayerRatingDto =
