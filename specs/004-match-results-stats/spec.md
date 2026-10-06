@@ -13,7 +13,7 @@ Tras jugar, el gestor registra goles, asistencias y tarjetas y cierra el partido
 - **RN-3**: Un gestor puede cerrar (`complete`) un partido `SCHEDULED` cuya hora de inicio ya pasó y que tiene equipos.
 - **RN-4**: Al cerrar, el resultado es el número de goles registrados por cada equipo; se actualiza el rating de cada jugador (spec 003 RN-6) y cuenta como partido jugado.
 - **RN-5**: Solo el **último** partido cerrado del club se puede reabrir para corregir eventos; al reabrir se revierten exactamente sus cambios de rating. Los eventos solo se editan en partidos `SCHEDULED`.
-- **RN-6**: Ranking del club por goles, asistencias y partidos jugados.
+- **RN-6**: Ranking del club por goles, asistencias, partidos jugados, minutos jugados y victorias/empates/derrotas.
 
 ## Criterios de aceptación
 - **CA-1**: Cerrar un partido 2-1 → los jugadores del equipo ganador suben de rating y los del perdedor bajan; `matchesRated` +1 para todos.
@@ -29,6 +29,6 @@ Tras jugar, el gestor registra goles, asistencias y tarjetas y cierra el partido
 | GET | `/api/club/{clubId}/ranking?by=goals|assists|matches` | miembro |
 
 ## Preguntas abiertas
-- [ ] ¿Se registran minutos jugados o se elimina `minutesPlayed`?
-- [ ] ¿Pueden los jugadores registrar sus propios goles (con validación de gestor) o solo gestores?
-- [ ] ¿Victorias/empates/derrotas cuentan para el nivel?
+- [x] Se registran **minutos jugados** (decidido 2026-10-06). Propuesta: por defecto la duración completa para cada jugador de los equipos; el gestor puede ajustar los de un jugador concreto.
+- [x] Solo los **gestores** registran goles y eventos (decidido 2026-10-06) (ya implementado).
+- [x] Victorias, empates y derrotas **cuentan en el ranking** (decidido 2026-10-06) (y ya cuentan en el rating Elo).

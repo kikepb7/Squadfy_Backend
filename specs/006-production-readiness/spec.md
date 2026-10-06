@@ -27,5 +27,5 @@ Que el backend se pueda construir de forma reproducible, arrancar contra una bas
 
 ## Preguntas abiertas
 - [ ] ¿Dónde se despliega? (Fly.io, Render, Railway, VPS con Docker, AWS...) Condiciona R-6 y el manejo de secretos.
-- [ ] ¿Se mantiene Supabase como Postgres gestionado y CloudAMQP/Redis Cloud, o se autoalojan?
-- [ ] ¿Hay ya un cliente (app móvil) consumiendo rutas que impida aplicar R-9 sin versionado?
+- [x] Se mantienen Supabase, CloudAMQP y Redis Cloud como servicios gestionados (decidido 2026-10-06).
+- [x] **Sí hay app móvil** consumiendo las rutas actuales y aún no está actualizada a los últimos cambios (decidido 2026-10-06) → R-9 se hace con versión nueva de la API y periodo de convivencia (rama `api-consistency`).

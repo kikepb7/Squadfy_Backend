@@ -1,6 +1,7 @@
 # 004 — Tareas
 
-- [ ] T1 Resolver preguntas abiertas.
+- [x] T1 Preguntas abiertas resueltas (minutos jugados sí, solo gestores registran goles, V/E/D en ranking).
+- [ ] T1b Duración del partido y ajuste de minutos por jugador (por defecto, partido completo).
 - [x] T2 `completeMatch` / `reopenMatch` + endpoints + validaciones + rating.
 - [ ] T3 Puerto `PlayerStatsProvider` en `common` + implementación con consulta agregada en `match`.
 - [ ] T4 Usar estadísticas derivadas en `ClubMemberDto` y en el sorteo.

@@ -60,6 +60,6 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - Borrado definitivo de clubes.
 
 ## Preguntas abiertas
-- [ ] ¿El código de invitación debe verlo cualquier miembro o solo gestores? (hoy lo ve cualquiera).
-- [ ] ¿Debe mostrarse el email de los miembros al resto? (hoy sí; recomendación: solo username y foto).
-- [ ] ¿Puede un `CAPTAIN` gestionar convocatorias y equipos? (hoy no).
+- [x] El código de invitación lo ve cualquier miembro (decidido 2026-10-06).
+- [x] El email de un miembro **no** se muestra al resto; solo username y foto (decidido 2026-10-06). Pendiente de implementar (T16).
+- [x] Un `CAPTAIN` **no** gestiona convocatorias ni equipos (decidido 2026-10-06); gestor = `OWNER` o `ADMIN`.
