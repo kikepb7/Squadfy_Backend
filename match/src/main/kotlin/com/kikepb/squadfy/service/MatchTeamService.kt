@@ -1,10 +1,12 @@
 package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.club.ClubMembershipProvider
+import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
 import com.kikepb.squadfy.domain.exception.InvalidTeamGenerationRequestException
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
 import com.kikepb.squadfy.domain.model.PlayerProfile
+import com.kikepb.squadfy.domain.model.TeamBalanceModel
 import com.kikepb.squadfy.domain.model.TeamBalancer
 import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_A
 import com.kikepb.squadfy.domain.model.TeamSideModel.TEAM_B
@@ -76,6 +78,22 @@ class MatchTeamService(
         val (teamA, teamB) = autoAssignTeams(clubId = match.clubId, enrolled = confirmed)
         replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB)
         return matchService.loadMatch(matchId = matchId)
+    }
+
+    /** Strength of each team from the players' current ratings, for managers only (spec 003 RN-10). */
+    fun getTeamBalance(matchId: MatchId, userId: UserId): TeamBalanceModel {
+        val match = matchService.loadMatch(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        if (match.teamA.isEmpty() || match.teamB.isEmpty()) {
+            throw InvalidMatchStateException("Teams have not been generated for this match yet")
+        }
+
+        val ratings = playerRatingService.ratingsFor(clubId = match.clubId, memberIds = match.teamA + match.teamB)
+        return TeamBalanceModel.of(
+            matchId = matchId,
+            teamARatings = match.teamA.map { ratings.getValue(it) },
+            teamBRatings = match.teamB.map { ratings.getValue(it) }
+        )
     }
 
     private fun replaceTeams(matchId: MatchId, teamA: List<ClubMemberId>, teamB: List<ClubMemberId>) {

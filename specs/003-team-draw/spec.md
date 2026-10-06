@@ -21,6 +21,7 @@ Con los jugadores inscritos en la convocatoria, formar dos equipos lo más parej
 - **RN-7**: Modo `MANUAL`: el gestor indica ambos equipos; deben ser disjuntos, no vacíos, con diferencia ≤ 1 y solo con inscritos.
 - **RN-8**: Solo los gestores sortean manualmente y solo en partidos `SCHEDULED`. Volver a sortear sustituye los equipos anteriores.
 - **RN-9**: **Al cerrarse la convocatoria (22:00 del día anterior) los equipos se publican automáticamente** con un sorteo `AUTO` entre los confirmados. Si un gestor ya había sorteado exactamente con esos jugadores, se respetan sus equipos. Después, los gestores pueden rectificar (nuevo sorteo `AUTO` o equipos `MANUAL`).
+- **RN-10**: Los gestores pueden consultar el **equilibrio de los equipos** de un partido para decidir si rectifican: por equipo, número de jugadores, rating medio y total; la diferencia de rating medio; y el **resultado esperado** del equipo A (0–1, donde 0,5 = igualado) según el modelo Elo. Se calcula con los ratings actuales. Los jugadores no tienen acceso (solo ven su propio rating).
 
 ## Criterios de aceptación
 - **CA-1**: Con 2 porteros y 8 jugadores de campo → 1 portero por equipo.
@@ -31,12 +32,16 @@ Con los jugadores inscritos en la convocatoria, formar dos equipos lo más parej
 - **CA-6**: Modo manual con un jugador no inscrito → 400.
 - **CA-7** (RN-9): Con 11 inscritos en un 5v5, al cerrar la convocatoria quedan publicados dos equipos de 5 con los 10 confirmados (el de la lista de espera no juega) y el gestor puede cambiarlos en modo manual.
 - **CA-8** (RN-9): Si antes del cierre el gestor sorteó con los mismos confirmados, al cerrar se mantienen esos equipos.
+- **CA-9** (RN-10): Con dos equipos de 5 jugadores sin partidos (rating 1000), el equilibrio muestra media 1000 en ambos, diferencia 0 y resultado esperado 0,5.
+- **CA-10** (RN-10): Si un equipo es más fuerte, su resultado esperado es > 0,5 y la diferencia de medias es la resta de ambas.
+- **CA-11** (RN-10): Un `PLAYER` que consulta el equilibrio → 403; si el partido aún no tiene equipos → 409.
 
 ## API (contrato)
 | Método | Ruta | Permiso |
 |---|---|---|
 | POST | `/api/matches/{matchId}/generate-teams` `{mode: AUTO|MANUAL, manualTeamA?, manualTeamB?}` | gestor |
 | GET | `/api/player-ratings/club/{clubId}/me` → `{clubId, clubMemberId, rating, matchesRated, isProvisional}` | miembro |
+| GET | `/api/matches/{matchId}/team-balance` → `{matchId, teamA: {players, averageRating, totalRating}, teamB: {...}, averageRatingDifference, teamAExpectedScore}` | gestor |
 
 La respuesta es `MatchDto` con `teamA`/`teamB` (ids de miembro).
 
@@ -47,3 +52,4 @@ La respuesta es `MatchDto` con `teamA`/`teamB` (ids de miembro).
 - [x] Valoración manual: **no**; el nivel se calcula de las estadísticas de partidos (decidido 2026-10-05).
 - [x] Cada jugador puede ver **su propio** rating (decidido 2026-10-05): `GET /api/player-ratings/club/{clubId}/me`.
 - [x] Los equipos se publican automáticamente al cerrar la convocatoria y el gestor puede rectificarlos (decidido 2026-10-05).
+- [ ] ¿Deben los gestores ver también el rating **individual** de cada jugador para rectificar a mano con criterio? (hoy solo ven los agregados por equipo).

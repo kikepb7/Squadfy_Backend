@@ -12,5 +12,10 @@
 - [x] T6 Visibilidad: cada jugador ve su propio rating.
 - [x] T7 `GET /api/player-ratings/club/{clubId}/me`.
 - [x] T9 Tests de integración (regenerar equipos, permisos, cierre y rating) — `MatchFlowIntegrationTest`.
-- [ ] T8 (siguiente rama, mejora) Devolver el nivel total de cada equipo a los gestores.
+- [x] T8 Equilibrio de equipos para gestores (RN-10):
+  - [x] T8a [P] `TeamBalanceModel` puro + `TeamBalanceModelTest` (CA-9, CA-10) — `match/domain/model`
+  - [x] T8b `MatchTeamService.getTeamBalance` con permiso de gestor y 409 sin equipos (CA-11)
+  - [x] T8c `GET /api/matches/{matchId}/team-balance` + `TeamBalanceDto` + mapper
+  - [x] T8d Test de integración en `MatchFlowIntegrationTest` (CA-9 extremo a extremo, CA-11)
+- [ ] T11 Pendiente de producto: ¿rating individual visible para gestores?
 - [x] T10 Publicación automática de equipos al cerrar la convocatoria (`MatchTeamService.publishTeamsOnAnnouncementClosed`) + tests CA-7, CA-8.

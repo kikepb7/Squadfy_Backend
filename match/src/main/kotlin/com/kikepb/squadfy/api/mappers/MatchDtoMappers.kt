@@ -6,6 +6,8 @@ import com.kikepb.squadfy.api.dto.ClubMatchScheduleDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.MatchEventDto
 import com.kikepb.squadfy.api.dto.PlayerRatingDto
+import com.kikepb.squadfy.api.dto.TeamBalanceDto
+import com.kikepb.squadfy.api.dto.TeamStrengthDto
 import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
@@ -16,6 +18,7 @@ import com.kikepb.squadfy.domain.model.MatchEventType.RED_CARD
 import com.kikepb.squadfy.domain.model.MatchEventType.YELLOW_CARD
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.PlayerRatingModel
+import com.kikepb.squadfy.domain.model.TeamBalanceModel
 import kotlin.math.roundToInt
 
 fun MatchModel.toMatchDto(): MatchDto = MatchDto(
@@ -88,4 +91,18 @@ fun PlayerRatingModel.toPlayerRatingDto(): PlayerRatingDto = PlayerRatingDto(
     rating = rating.roundToInt(),
     matchesRated = matchesRated,
     isProvisional = isProvisional
+)
+
+fun TeamBalanceModel.toTeamBalanceDto(): TeamBalanceDto = TeamBalanceDto(
+    matchId = matchId,
+    teamA = teamA.toTeamStrengthDto(),
+    teamB = teamB.toTeamStrengthDto(),
+    averageRatingDifference = averageRatingDifference.roundToInt(),
+    teamAExpectedScore = (teamAExpectedScore * 100).roundToInt() / 100.0
+)
+
+private fun TeamBalanceModel.TeamStrength.toTeamStrengthDto(): TeamStrengthDto = TeamStrengthDto(
+    players = players,
+    averageRating = averageRating.roundToInt(),
+    totalRating = totalRating.roundToInt()
 )

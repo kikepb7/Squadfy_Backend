@@ -4,8 +4,10 @@ import com.kikepb.squadfy.api.dto.AddMatchEventRequest
 import com.kikepb.squadfy.api.dto.CreateMatchRequest
 import com.kikepb.squadfy.api.dto.GenerateTeamsRequest
 import com.kikepb.squadfy.api.dto.MatchDto
+import com.kikepb.squadfy.api.dto.TeamBalanceDto
 import com.kikepb.squadfy.api.dto.TeamGenerationModeDto
 import com.kikepb.squadfy.api.mappers.toMatchDto
+import com.kikepb.squadfy.api.mappers.toTeamBalanceDto
 import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.MatchEventId
@@ -93,6 +95,12 @@ class MatchController(
             manualTeamA = body.manualTeamA,
             manualTeamB = body.manualTeamB
         ).toMatchDto()
+
+    @GetMapping("/{matchId}/team-balance")
+    fun getTeamBalance(@PathVariable("matchId") matchId: MatchId): TeamBalanceDto =
+        matchTeamService
+            .getTeamBalance(matchId = matchId, userId = requestUserId)
+            .toTeamBalanceDto()
 
     @PostMapping("/{matchId}/events")
     @ResponseStatus(HttpStatus.CREATED)

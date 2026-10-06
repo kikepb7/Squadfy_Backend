@@ -19,6 +19,13 @@ Persistencia en `match_service`: `player_ratings (club_id, club_member_id, ratin
 
 Evolución posible (cuando haya volumen): TrueSkill/Glicko-2 para modelar la incertidumbre (σ) y priorizarla en el sorteo; calibrar pesos con los partidos históricos minimizando el error de predicción del resultado.
 
+## Equilibrio de equipos (RN-10)
+- Dominio puro `TeamBalanceModel.of(matchId, teamARatings, teamBRatings)` en `match/domain/model`: medias, totales, diferencia y `teamAExpectedScore = PlayerRatingCalculator.expectedScore(mediaA, mediaB)` (misma fórmula que actualiza el rating, así la cifra es coherente con cómo aprende el modelo).
+- Se usan **medias** para comparar y esperar resultado (los equipos pueden diferir en un jugador); los totales se muestran como información.
+- `MatchTeamService.getTeamBalance(matchId, userId)`: `requireManager`, equipos desde `MatchService.loadMatch`, ratings desde `PlayerRatingService.ratingsFor`. Sin equipos → `InvalidMatchStateException` (409).
+- Endpoint en `MatchController`. Cuando exista la API v1 (spec de `api-consistency`) se expondrá en la nueva ruta.
+
 ## Estrategia de test
 - Unitarios (hechos): `TeamBalancerTest` (tamaños 2–22, porteros, posiciones, nivel, estrellas, determinismo), `PlayerRatingCalculatorTest` (ganador/perdedor, empate, sorpresa, margen, suma cero individual, novatos).
-- Integración (pendiente): CA-4, CA-5, CA-6.
+- Unitarios: `TeamBalanceModelTest` (CA-9, CA-10).
+- Integración: CA-4..CA-8 hechos; CA-11 y el cálculo extremo a extremo en `MatchFlowIntegrationTest`.

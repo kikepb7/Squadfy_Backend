@@ -289,6 +289,25 @@ class MatchFlowIntegrationTest {
     }
 
     @Test
+    fun `managers can see how even the teams are, players cannot`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        val players = enrollPlayers(announcementOf(match), count = 10)
+
+        assertFailsWith<InvalidMatchStateException> { teamService.getTeamBalance(matchId = match.id, userId = owner) }
+
+        teamService.generateTeams(match.id, owner, TeamGenerationMode.AUTO, null, null)
+        val balance = teamService.getTeamBalance(matchId = match.id, userId = owner)
+
+        assertEquals(5, balance.teamA.players)
+        assertEquals(5, balance.teamB.players)
+        assertEquals(PlayerRatingCalculator.INITIAL_RATING, balance.teamA.averageRating)
+        assertEquals(0.0, balance.averageRatingDifference)
+        assertEquals(0.5, balance.teamAExpectedScore)
+        assertFailsWith<ForbiddenException> { teamService.getTeamBalance(matchId = match.id, userId = players.first()) }
+    }
+
+    @Test
     fun `each player can read their own rating`() {
         createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
         val player = UUID.randomUUID().also { clubs.addMember(clubId = clubId, userId = it) }
