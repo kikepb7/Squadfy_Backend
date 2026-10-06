@@ -1,6 +1,6 @@
 # 005 — Tareas
 
-- [ ] T1 Resolver pregunta abierta restante (¿email además de push?).
+- [x] T1 Preguntas abiertas resueltas: silenciar por club y solo push.
 - [ ] T1b Preferencia de silencio por usuario y club en `notification` (tabla + endpoint + filtro al enviar).
 - [ ] T2 Eventos `match.events` + cola/binding en `RabbitMqConfig`.
 - [ ] T3 Ampliar `ClubMembershipProvider` con la lista de miembros (userIds) del club.

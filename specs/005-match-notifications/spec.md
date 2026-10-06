@@ -22,4 +22,4 @@ Que los miembros se enteren sin abrir la app de que la convocatoria está abiert
 
 ## Preguntas abiertas
 - [x] Cada usuario puede **silenciar las notificaciones de un club** (decidido 2026-10-06).
-- [ ] ¿Email además de push?
+- [x] Solo **push** por ahora; otros canales (email…) se especificarán si se piden (decidido 2026-10-06).
