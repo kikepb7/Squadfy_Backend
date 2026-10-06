@@ -10,7 +10,7 @@
 
 ## Pendiente
 - [ ] T7 Resolver preguntas abiertas de la spec (email visible, código visible, permisos de capitán).
-- [ ] T8 Migración: `club_members.left_at` + índice único parcial — requiere spec 006 T3.
+- [ ] T8 Migración Flyway `V3`: `club_members.left_at` + índice único parcial `(club_id, user_id) WHERE left_at IS NULL`.
 - [ ] T9 [P] Función pura de jerarquía de roles + tests — `club/domain/model`.
 - [ ] T10 `leaveClub` + `DELETE /members/me` (RN-8, RN-10).
 - [ ] T11 `kickMember`, `changeRole`, `transferOwnership` + endpoints (RN-9).

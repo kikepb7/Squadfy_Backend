@@ -15,7 +15,7 @@
 - [x] T12 Lista de espera + formato de partido (5v5/7v7/11v11).
 
 ## Pendiente
-- [ ] T10 (manual, BD de desarrollo) Ejecutar en la BD de desarrollo: `ALTER TABLE match_service.club_match_schedules DROP COLUMN IF EXISTS callup_open_days_before_match;`
+- [x] T10 Columna `callup_open_days_before_match` eliminada por la migración Flyway `V2` (ya no hace falta SQL manual).
 - [x] T15 Preguntas abiertas resueltas (sin bajas tras el cierre; cambio de día aplica al siguiente partido).
 - [ ] T13 (siguiente rama, mejora) Endpoint `GET /api/matchAnnouncements/club/{clubId}/current` con la convocatoria vigente e `isEnrolled` del usuario.
 - [x] T14 Tests de integración (Testcontainers) — `MatchFlowIntegrationTest`: CA-1, CA-2, CA-3, CA-4b, CA-6, CA-7. CA-4 (concurrencia real) cubierto por bloqueo pesimista; test multihilo queda para spec 006.
