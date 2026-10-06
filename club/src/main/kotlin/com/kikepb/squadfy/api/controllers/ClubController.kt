@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.controllers
 
+import com.kikepb.squadfy.api.dto.ClubBanDto
 import org.springframework.web.bind.annotation.DeleteMapping
 import com.kikepb.squadfy.service.ClubMemberManagementService
 import com.kikepb.squadfy.domain.type.ClubMemberId
@@ -168,4 +169,27 @@ class ClubController(
             memberId = memberId,
             newRole = body.role
         ).toClubMemberDto()
+
+    @GetMapping("/{clubId}/bans")
+    @Operation(summary = "Members banned from the club (managers only)")
+    fun getBans(@PathVariable("clubId") clubId: ClubId): List<ClubBanDto> =
+        clubMemberManagementService
+            .getBans(clubId = clubId, userId = requestUserId)
+            .map { ClubBanDto(clubMemberId = it.clubMemberId, userId = it.userId, username = it.username, bannedAt = it.bannedAt) }
+
+    @PostMapping("/{clubId}/members/{memberId}/ban")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Ban a current or former member; an active member is also removed. Same permissions as removing")
+    fun banMember(
+        @PathVariable("clubId") clubId: ClubId,
+        @PathVariable("memberId") memberId: ClubMemberId
+    ) = clubMemberManagementService.banMember(clubId = clubId, userId = requestUserId, memberId = memberId)
+
+    @DeleteMapping("/{clubId}/members/{memberId}/ban")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Lift a ban; the user can join again with a valid invitation code")
+    fun unbanMember(
+        @PathVariable("clubId") clubId: ClubId,
+        @PathVariable("memberId") memberId: ClubMemberId
+    ) = clubMemberManagementService.unbanMember(clubId = clubId, userId = requestUserId, memberId = memberId)
 }

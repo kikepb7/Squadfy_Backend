@@ -63,6 +63,9 @@ class ClubMemberEntity(
     /** Null while the membership is active; set when the member leaves or is removed. */
     @Column(name = "left_at")
     var leftAt: Instant? = null,
+    /** Non-null while the user is banned from the club; the membership cannot be reactivated. */
+    @Column(name = "banned_at")
+    var bannedAt: Instant? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

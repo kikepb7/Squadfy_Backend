@@ -175,6 +175,27 @@ class ApiV1IntegrationTest {
     }
 
     @Test
+    fun `banned users cannot rejoin until the ban is lifted`() {
+        val (_, ownerToken) = newUser()
+        val (playerId, playerToken) = newUser()
+        val club = call("POST", "/api/v1/clubs", ownerToken, """{"name":"Ban FC"}""").json
+        val clubId = club["id"].asText()
+        val joinBody = """{"invitationCode":"${club["invitationCode"].asText()}"}"""
+        call("POST", "/api/v1/clubs/join", playerToken, joinBody)
+        val memberId = call("GET", "/api/v1/clubs/$clubId/members", ownerToken).json
+            .single { it["userId"].asText() == playerId.toString() }["id"].asText()
+
+        assertEquals(204, call("POST", "/api/v1/clubs/$clubId/members/$memberId/ban", ownerToken).status)
+        val rejected = call("POST", "/api/v1/clubs/join", playerToken, joinBody)
+        assertEquals(403, rejected.status)
+        assertEquals("BANNED_FROM_CLUB", rejected.json["code"].asText())
+        assertEquals(memberId, call("GET", "/api/v1/clubs/$clubId/bans", ownerToken).json[0]["clubMemberId"].asText())
+
+        assertEquals(204, call("DELETE", "/api/v1/clubs/$clubId/members/$memberId/ban", ownerToken).status)
+        assertEquals(200, call("POST", "/api/v1/clubs/join", playerToken, joinBody).status)
+    }
+
+    @Test
     fun `non members are rejected and previous routes no longer exist`() {
         val (_, ownerToken) = newUser()
         val (_, strangerToken) = newUser()

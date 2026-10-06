@@ -8,6 +8,11 @@ Gestión de miembros en `ClubService`, con permisos en servicio y reglas de jera
 - Una membresía activa tiene `left_at IS NULL`. Todas las consultas de miembros (permisos, recuento, listados, puerto `ClubMembershipProvider`) filtran por activas.
 - Volver a unirse **reactiva la misma fila** (RN-12): el índice único `(club_id, user_id)` se mantiene y el `clubMemberId` no cambia, así que el rating y el historial se conservan.
 
+## Veto (RN-14)
+- Migración `V4`: `club_members.banned_at timestamptz null`. El veto vive en la misma fila de la membresía (única por club y usuario), así que alcanza también a miembros que ya salieron.
+- `banMember`: permisos de `ClubRolePolicy.canRemove` sobre el rol que tenía; si está activo se desactiva y se publica `MemberKicked` (retirada de convocatorias). `unbanMember` limpia `banned_at` sin reactivar.
+- `joinClub` rechaza membresías con `banned_at` (403 `BANNED_FROM_CLUB`).
+
 ## Dominio
 - `ClubRolePolicy` (`club/domain/model`), pura y testeada: `canRemove(actor, target)`, `canAssign(actor, target, newRole)`, con los casos de RN-9.
 

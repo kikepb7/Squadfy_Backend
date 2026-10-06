@@ -4,6 +4,7 @@ import com.kikepb.squadfy.domain.club.PlayerPosition
 import com.kikepb.squadfy.domain.events.club.ClubEvent
 import com.kikepb.squadfy.domain.exception.ClubCapacityReachedException
 import com.kikepb.squadfy.domain.exception.ClubInviteCodeInvalidException
+import com.kikepb.squadfy.domain.exception.ClubMemberBannedException
 import com.kikepb.squadfy.domain.exception.ClubMembershipAlreadyExistsException
 import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubParticipantNotFoundException
@@ -90,6 +91,7 @@ class ClubService(
         val clubId = requireNotNull(club.id)
 
         val previousMembership = clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)
+        if (previousMembership?.bannedAt != null) throw ClubMemberBannedException()
         if (previousMembership != null && previousMembership.leftAt == null) throw ClubMembershipAlreadyExistsException()
 
         val membersCount = activeMembersCount(clubId = clubId)

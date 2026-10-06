@@ -21,5 +21,7 @@
 - [x] T14 Puerto `UserDirectory` en lugar de SQL a `user_service`.
 - [x] T15 Tests de integración (club y app) + migraciones; guía de migración de la API actualizada.
 
-## Pendiente
-- [ ] T18 Pendiente de producto: ¿un jugador expulsado puede volver con el código o queda vetado? (hoy puede volver).
+- [x] T18 Decisión: veto reversible (2026-10-06).
+- [x] T19 Migración `V4__club_members_banned_at.sql`.
+- [x] T20 Vetar / levantar veto / listar vetados + rechazo al unirse (RN-14) + endpoints.
+- [x] T21 Tests CA-14..CA-16 (servicio y HTTP) y guía de la app.

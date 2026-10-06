@@ -1,6 +1,6 @@
 # 001 — Clubes y membresía
 
-- **Estado**: Hecha (rama `club-management-feature`), salvo la pregunta abierta sobre vetar a expulsados
+- **Estado**: Hecha (rama `club-management-feature`)
 - **Módulos**: club, common
 - **Dependencias**: autenticación (user)
 
@@ -35,6 +35,7 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - **RN-11**: El owner transfiere la propiedad a otro miembro activo: ese miembro pasa a `OWNER` y el antiguo owner pasa a `ADMIN`.
 - **RN-12**: Quien salió o fue expulsado puede volver a unirse con un código válido; recupera la misma membresía (historial y rating) con rol `PLAYER`.
 - **RN-13**: Los gestores editan nombre, descripción y límite de miembros del club; el límite no puede quedar por debajo del número actual de miembros.
+- **RN-14**: Los gestores pueden **vetar** a un miembro actual o antiguo, con los mismos permisos que para expulsar (RN-9) y sin vetarse a sí mismos. Si el miembro está activo, el veto lo expulsa (como RN-10). Un miembro vetado **no puede volver a unirse** aunque tenga un código válido. Los gestores pueden **levantar el veto**; a partir de ahí puede volver a unirse con un código válido (RN-12). Los gestores ven el listado de vetados del club.
 
 ## Criterios de aceptación
 - **CA-1** (RN-3/4): Dado un código válido, cuando un usuario no miembro se une, entonces es `PLAYER` y `membersCount` aumenta en 1; si ya era miembro → 409.
@@ -50,6 +51,9 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - **CA-11** (RN-11): Tras transferir, el antiguo owner es `ADMIN`, el nuevo es `OWNER` y `ownerId` del club cambia; el antiguo owner ya puede salir.
 - **CA-12** (RN-12): Un jugador expulsado que vuelve con el código conserva su `clubMemberId` y su rating, con rol `PLAYER`.
 - **CA-13** (RN-13): Bajar `maxMembers` por debajo de los miembros actuales → 400.
+- **CA-14** (RN-14): Vetar a un miembro activo lo expulsa (sale de convocatorias abiertas); al intentar unirse con el código → 403 `BANNED_FROM_CLUB`.
+- **CA-15** (RN-14): Tras levantar el veto, puede volver a unirse con el código y recupera su membresía como `PLAYER`.
+- **CA-16** (RN-14): Un `ADMIN` no puede vetar a otro `ADMIN` ni levantar el veto de un admin vetado por el owner → 403; un `PLAYER` no puede ver el listado de vetados → 403.
 
 ## API (contrato v1)
 | Método | Ruta | Permiso | Estado |
@@ -67,6 +71,9 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 | DELETE | `/api/v1/clubs/{clubId}/members/{memberId}` → 204 | gestor (RN-9) | nuevo |
 | PATCH | `/api/v1/clubs/{clubId}/members/{memberId}/role` `{role}` | gestor (RN-9) | nuevo |
 | POST | `/api/v1/clubs/{clubId}/transfer-ownership` `{memberId}` | owner | nuevo |
+| GET | `/api/v1/clubs/{clubId}/bans` → `[{clubMemberId, userId, username, bannedAt}]` | gestor | nuevo |
+| POST | `/api/v1/clubs/{clubId}/members/{memberId}/ban` → 204 | gestor (RN-9) | nuevo |
+| DELETE | `/api/v1/clubs/{clubId}/members/{memberId}/ban` → 204 | gestor (RN-9) | nuevo |
 
 ## Fuera de alcance
 - Solicitudes de unión con aprobación (los eventos `JoinRequest*` existen pero no son MVP).
@@ -77,4 +84,4 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - [x] El código de invitación lo ve cualquier miembro (decidido 2026-10-06).
 - [x] El email de un miembro **no** se muestra al resto; solo username y foto (decidido 2026-10-06). Pendiente de implementar (T16).
 - [x] Un `CAPTAIN` **no** gestiona convocatorias ni equipos (decidido 2026-10-06); gestor = `OWNER` o `ADMIN`.
-- [ ] ¿Un jugador **expulsado** puede volver con el código (RN-12) o debe quedar vetado? Por defecto puede volver; el gestor puede regenerar el código.
+- [x] Expulsar permite volver; para impedirlo existe el **veto**, que los gestores pueden levantar más adelante (decidido 2026-10-06, RN-14).

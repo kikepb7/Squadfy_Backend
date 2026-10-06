@@ -3,6 +3,7 @@ package com.kikepb.squadfy.api.exception_handling
 import com.kikepb.squadfy.domain.exception.ClubCapacityReachedException
 import com.kikepb.squadfy.domain.exception.ClubInviteCodeInvalidException
 import com.kikepb.squadfy.domain.exception.ClubMembershipAlreadyExistsException
+import com.kikepb.squadfy.domain.exception.ClubMemberBannedException
 import com.kikepb.squadfy.domain.exception.ClubMemberNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubOwnerCannotLeaveException
@@ -31,6 +32,13 @@ class ClubExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onInvalidInvitationCode(e: ClubInviteCodeInvalidException) = mapOf(
         "code" to "INVALID_INVITATION_CODE",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(ClubMemberBannedException::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun onBanned(e: ClubMemberBannedException) = mapOf(
+        "code" to "BANNED_FROM_CLUB",
         "message" to e.message
     )
 

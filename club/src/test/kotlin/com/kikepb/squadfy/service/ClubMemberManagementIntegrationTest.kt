@@ -1,6 +1,7 @@
 package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.events.club.ClubEvent
+import com.kikepb.squadfy.domain.exception.ClubMemberBannedException
 import com.kikepb.squadfy.domain.exception.ClubOwnerCannotLeaveException
 import com.kikepb.squadfy.domain.exception.ForbiddenException
 import com.kikepb.squadfy.domain.exception.InvalidClubOperationException
@@ -179,5 +180,59 @@ class ClubMemberManagementIntegrationTest {
         assertFailsWith<InvalidClubOperationException> {
             clubService.updateClub(clubId = club.id, userId = owner, name = null, description = null, maxMembers = 2)
         }
+    }
+
+    @Test
+    fun `a banned member is removed and cannot rejoin until the ban is lifted`() {
+        val player = join()
+        val memberId = memberIdOf(player)
+
+        managementService.banMember(clubId = club.id, userId = owner, memberId = memberId)
+
+        assertTrue(clubService.getMembers(clubId = club.id, userId = owner).none { it.userId == player })
+        assertEquals(1, publishedEvents().filterIsInstance<ClubEvent.MemberKicked>().count { it.clubMemberId == memberId })
+        assertEquals(listOf(memberId), managementService.getBans(clubId = club.id, userId = owner).map { it.clubMemberId })
+        assertFailsWith<ClubMemberBannedException> {
+            clubService.joinClub(userId = player, invitationCode = club.invitationCode, shirtNumber = null, position = null)
+        }
+
+        managementService.unbanMember(clubId = club.id, userId = owner, memberId = memberId)
+        clubService.joinClub(userId = player, invitationCode = club.invitationCode, shirtNumber = null, position = null)
+
+        assertEquals(memberId, memberIdOf(player))
+        assertEquals(ClubMemberRole.PLAYER, roleOf(player))
+        assertTrue(managementService.getBans(clubId = club.id, userId = owner).isEmpty())
+    }
+
+    @Test
+    fun `former members can be banned too`() {
+        val player = join()
+        val memberId = memberIdOf(player)
+        managementService.leaveClub(clubId = club.id, userId = player)
+
+        managementService.banMember(clubId = club.id, userId = owner, memberId = memberId)
+
+        assertFailsWith<ClubMemberBannedException> {
+            clubService.joinClub(userId = player, invitationCode = club.invitationCode, shirtNumber = null, position = null)
+        }
+        assertEquals(0, publishedEvents().filterIsInstance<ClubEvent.MemberKicked>().size)
+    }
+
+    @Test
+    fun `bans follow the same hierarchy as removals`() {
+        val admin = join()
+        val otherAdmin = join()
+        val player = join()
+        managementService.changeMemberRole(club.id, owner, memberIdOf(admin), ClubMemberRole.ADMIN)
+        managementService.changeMemberRole(club.id, owner, memberIdOf(otherAdmin), ClubMemberRole.ADMIN)
+        val otherAdminMemberId = memberIdOf(otherAdmin)
+
+        assertFailsWith<ForbiddenException> { managementService.banMember(club.id, admin, otherAdminMemberId) }
+        assertFailsWith<InvalidClubOperationException> { managementService.banMember(club.id, admin, memberIdOf(admin)) }
+        assertFailsWith<ForbiddenException> { managementService.getBans(clubId = club.id, userId = player) }
+
+        managementService.banMember(club.id, owner, otherAdminMemberId)
+        assertFailsWith<ForbiddenException> { managementService.unbanMember(club.id, admin, otherAdminMemberId) }
+        managementService.unbanMember(club.id, owner, otherAdminMemberId)
     }
 }

@@ -6,6 +6,7 @@ import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubOwnerCannotLeaveException
 import com.kikepb.squadfy.domain.exception.ForbiddenException
 import com.kikepb.squadfy.domain.exception.InvalidClubOperationException
+import com.kikepb.squadfy.domain.model.ClubBanModel
 import com.kikepb.squadfy.domain.model.ClubMemberModel
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole
 import com.kikepb.squadfy.domain.model.ClubModel
@@ -73,6 +74,70 @@ class ClubMemberManagementService(
                 kickedUsername = clubParticipantService.findById(userId = target.userId)?.username.orEmpty()
             )
         )
+    }
+
+    /**
+     * Bans a current or former member (RN-14) with the same permissions as removing them; an
+     * active member is also removed from the club.
+     */
+    @Transactional
+    fun banMember(clubId: ClubId, userId: UserId, memberId: ClubMemberId) {
+        val actor = clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val target = clubMemberRepository.findByIdAndClubId(id = memberId, clubId = clubId)
+            ?: throw ClubMemberNotFoundException()
+        if (target.id == actor.id) throw InvalidClubOperationException("You cannot ban yourself")
+        if (!ClubRolePolicy.canRemove(actor = actor.role.toClubMemberRole(), target = target.role.toClubMemberRole())) {
+            throw ForbiddenException()
+        }
+        if (target.bannedAt != null) return
+
+        val wasActive = target.leftAt == null
+        target.bannedAt = clock.instant()
+        if (wasActive) target.leftAt = clock.instant()
+        clubMemberRepository.saveAndFlush(target)
+
+        if (wasActive) {
+            eventPublisher.publishAfterCommit(
+                ClubEvent.MemberKicked(
+                    clubId = clubId,
+                    clubName = clubName(clubId = clubId),
+                    clubMemberId = memberId,
+                    kickedUserId = target.userId,
+                    kickedUsername = clubParticipantService.findById(userId = target.userId)?.username.orEmpty()
+                )
+            )
+        }
+    }
+
+    /** Lifts a ban; the user can join again with a valid invitation code. */
+    @Transactional
+    fun unbanMember(clubId: ClubId, userId: UserId, memberId: ClubMemberId) {
+        val actor = clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val target = clubMemberRepository.findByIdAndClubId(id = memberId, clubId = clubId)
+            ?.takeIf { it.bannedAt != null }
+            ?: throw ClubMemberNotFoundException()
+        if (!ClubRolePolicy.canRemove(actor = actor.role.toClubMemberRole(), target = target.role.toClubMemberRole())) {
+            throw ForbiddenException()
+        }
+
+        target.bannedAt = null
+        clubMemberRepository.saveAndFlush(target)
+    }
+
+    fun getBans(clubId: ClubId, userId: UserId): List<ClubBanModel> {
+        clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val banned = clubMemberRepository.findAllByClubIdAndBannedAtIsNotNullOrderByBannedAtDesc(clubId = clubId)
+        if (banned.isEmpty()) return emptyList()
+        val participants = clubParticipantService.findByIds(userIds = banned.map { it.userId })
+
+        return banned.map {
+            ClubBanModel(
+                clubMemberId = requireNotNull(it.id),
+                userId = it.userId,
+                username = participants[it.userId]?.username.orEmpty(),
+                bannedAt = requireNotNull(it.bannedAt)
+            )
+        }
     }
 
     @Transactional
