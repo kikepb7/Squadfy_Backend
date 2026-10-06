@@ -94,4 +94,6 @@ Solo push (Firebase). La app debe registrar el dispositivo con `POST /api/v1/dev
 | `match.waitlist.promoted` | Pasas de la lista de espera a convocado | El jugador promocionado | `clubId`, `matchId`, `announcementId` |
 | `new_message` | Mensaje de chat | Participantes del chat | `chatId` |
 
+La configuración de Firebase de la app debe ser del **mismo proyecto** que las credenciales del backend. En iOS hay que subir la clave APNs en Firebase Console. Si se define `FIREBASE_ANDROID_PACKAGE`, debe coincidir exactamente con el `applicationId` de la app (incluidas variantes como `.debug`).
+
 Un usuario que silencia un club (`PUT .../notification-settings {"muted": true}`) no recibe sus push, salvo `match.waitlist.promoted`. El título de las push de chat es ahora el nombre del remitente.

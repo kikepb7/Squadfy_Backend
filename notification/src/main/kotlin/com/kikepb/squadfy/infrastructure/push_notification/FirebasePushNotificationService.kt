@@ -22,6 +22,9 @@ class FirebasePushNotificationService(
     private val credentialsPath: String,
     @param:Value("\${firebase.enabled:true}")
     private val enabled: Boolean,
+    /** Android applicationId allowed to receive the pushes; blank = no restriction. */
+    @param:Value("\${firebase.android-package:}")
+    private val androidPackage: String,
     private val resourceLoader: ResourceLoader
 ) {
 
@@ -94,7 +97,7 @@ class FirebasePushNotificationService(
                                 AndroidConfig.builder()
                                     .setPriority(AndroidConfig.Priority.HIGH)
                                     .setCollapseKey(notification.collapseKey)
-                                    .setRestrictedPackageName("com.kikepb.squadfy")
+                                    .apply { if (androidPackage.isNotBlank()) setRestrictedPackageName(androidPackage) }
                                     .build()
                             )
                         }

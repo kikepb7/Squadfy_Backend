@@ -147,4 +147,6 @@ supabase:
 
 firebase:
   enabled: ${FIREBASE_ENABLED:true}
+  # Android applicationId that may receive pushes (e.g. com.kikepb.squadfy); empty = any app of the Firebase project
+  android-package: ${FIREBASE_ANDROID_PACKAGE:}
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json}
