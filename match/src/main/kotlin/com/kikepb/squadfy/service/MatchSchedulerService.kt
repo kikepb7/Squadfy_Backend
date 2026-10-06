@@ -9,7 +9,8 @@ class MatchSchedulerService(
     private val clubMatchScheduleService: ClubMatchScheduleService,
     private val matchPlanningService: MatchPlanningService,
     private val matchAnnouncementService: MatchAnnouncementService,
-    private val matchTeamService: MatchTeamService
+    private val matchTeamService: MatchTeamService,
+    private val matchAnnouncementNotificationService: MatchAnnouncementNotificationService
 ) {
 
     private val log = LoggerFactory.getLogger(MatchSchedulerService::class.java)
@@ -39,6 +40,18 @@ class MatchSchedulerService(
             } catch (ex: Exception) {
                 log.error("[MatchScheduler] Error publishing teams for match={}: {}", matchId, ex.message, ex)
             }
+        }
+    }
+
+    /** Opening and closing-soon push notifications (spec 005), each sent once per announcement. */
+    @Scheduled(cron = "30 */5 * * * *", zone = "UTC")
+    fun sendAnnouncementNotifications() {
+        try {
+            val opened = matchAnnouncementNotificationService.notifyOpenedAnnouncements()
+            val reminded = matchAnnouncementNotificationService.sendClosingReminders()
+            if (opened + reminded > 0) log.info("[MatchScheduler] Notified {} opened and {} closing announcements", opened, reminded)
+        } catch (ex: Exception) {
+            log.error("[MatchScheduler] Error sending announcement notifications: {}", ex.message, ex)
         }
     }
 }

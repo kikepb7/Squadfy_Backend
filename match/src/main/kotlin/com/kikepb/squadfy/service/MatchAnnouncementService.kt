@@ -34,6 +34,7 @@ class MatchAnnouncementService(
     private val matchAnnouncementRepository: MatchAnnouncementRepository,
     private val matchAnnouncementEntryRepository: MatchAnnouncementEntryRepository,
     private val matchRepository: MatchRepository,
+    private val matchNotificationPublisher: MatchNotificationPublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -181,10 +182,29 @@ class MatchAnnouncementService(
 
     /** The first player on the waitlist takes the free confirmed place. */
     private fun promoteFirstWaitlisted(matchAnnouncementId: MatchAnnouncementId) {
-        matchAnnouncementEntryRepository.findFirstByMatchAnnouncementIdAndStatusOrderByEnrolledAtAsc(
+        val promoted = matchAnnouncementEntryRepository.findFirstByMatchAnnouncementIdAndStatusOrderByEnrolledAtAsc(
             matchAnnouncementId = matchAnnouncementId,
             status = WAITLISTED
-        )?.let { it.status = CONFIRMED }
+        ) ?: return
+        promoted.status = CONFIRMED
+
+        val announcement = matchAnnouncementRepository.findByIdOrNull(matchAnnouncementId) ?: return
+        val match = matchRepository.findByIdOrNull(announcement.matchId) ?: return
+        matchNotificationPublisher.promotedFromWaitlist(
+            clubId = announcement.clubId,
+            matchId = announcement.matchId,
+            matchScheduledAt = match.scheduledAt,
+            announcementId = matchAnnouncementId,
+            memberId = promoted.clubMemberId
+        )
+    }
+
+    /** Every enrolled member (confirmed and waitlisted) of the match's announcement. */
+    fun getAllEntriesByMatch(matchId: MatchId): List<ClubMemberId> {
+        val announcement = matchAnnouncementRepository.findByMatchId(matchId = matchId) ?: return emptyList()
+        return matchAnnouncementEntryRepository.findAllByMatchAnnouncementIdOrderByEnrolledAtAsc(
+            matchAnnouncementId = requireNotNull(announcement.id)
+        ).map { it.clubMemberId }
     }
 
     /** Confirmed players of each match, in enrollment order. */

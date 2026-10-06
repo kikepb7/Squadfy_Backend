@@ -1,8 +1,5 @@
 package com.kikepb.squadfy
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.kikepb.squadfy.service.JwtService
 import com.kikepb.squadfy.testing.InfrastructureTestContainersConfiguration
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
@@ -10,14 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
-import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
-import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -34,42 +25,9 @@ import kotlin.test.assertTrue
     ]
 )
 @Import(InfrastructureTestContainersConfiguration::class)
-class ApiV1IntegrationTest {
+class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
 
-    @LocalServerPort private var port: Int = 0
-    @Autowired lateinit var jwtService: JwtService
-    @Autowired lateinit var jdbcTemplate: JdbcTemplate
     @Autowired @Qualifier("requestMappingHandlerMapping") lateinit var handlerMapping: RequestMappingHandlerMapping
-
-    private val http = HttpClient.newHttpClient()
-    private val json = ObjectMapper()
-
-    private data class ApiResponse(val status: Int, val body: String) {
-        val json: JsonNode get() = ObjectMapper().readTree(body)
-    }
-
-    private fun call(method: String, path: String, token: String? = null, body: String? = null): ApiResponse {
-        val request = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
-            .method(method, body?.let { HttpRequest.BodyPublishers.ofString(it) } ?: HttpRequest.BodyPublishers.noBody())
-            .header("Content-Type", "application/json")
-            .apply { token?.let { header("Authorization", "Bearer $it") } }
-            .build()
-        val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-        return ApiResponse(response.statusCode(), response.body())
-    }
-
-    private fun newUser(): Pair<UUID, String> {
-        val userId = UUID.randomUUID()
-        val name = "u${userId.toString().take(8)}"
-        jdbcTemplate.update(
-            """
-            INSERT INTO user_service.users (id, email, username, hashed_password, has_verified_email, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, 'not-used', true, true, now(), now())
-            """.trimIndent(),
-            userId, "$name@squadfy.test", name
-        )
-        return userId to jwtService.generateAccessToken(userId)
-    }
 
     @Test
     fun `club, schedule, announcement and ratings flow through v1`() {

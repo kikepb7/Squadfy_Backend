@@ -10,6 +10,8 @@ import com.kikepb.squadfy.domain.events.SquadfyEvent
 import com.kikepb.squadfy.domain.events.chat.ChatEvent
 import com.kikepb.squadfy.domain.events.club.ClubEvent
 import com.kikepb.squadfy.domain.events.club.ClubEventConstants
+import com.kikepb.squadfy.domain.events.match.MatchEvent
+import com.kikepb.squadfy.domain.events.match.MatchEventConstants
 import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.events.chat.ChatEventConstant
 import com.kikepb.squadfy.domain.events.user.UserEventConstants
@@ -58,7 +60,8 @@ class RabbitMqConfig {
                 SquadfyEvent::class.java.packageName,
                 UserEvent::class.java.packageName,
                 ChatEvent::class.java.packageName,
-                ClubEvent::class.java.packageName
+                ClubEvent::class.java.packageName,
+                MatchEvent::class.java.packageName
             )
             typePrecedence = Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID
         }
@@ -104,6 +107,24 @@ class RabbitMqConfig {
         true,
         false
     )
+
+    @Bean
+    fun matchExchange() = TopicExchange(
+        MatchEventConstants.MATCH_EXCHANGE,
+        true,
+        false
+    )
+
+    @Bean
+    fun notificationMatchEventQueue() = Queue(
+        MessageQueues.NOTIFICATION_MATCH_EVENTS,
+        true
+    )
+
+    /** notification sends the push notifications of the match cycle (spec 005). */
+    @Bean
+    fun notificationMatchEventsBinding(notificationMatchEventQueue: Queue, matchExchange: TopicExchange): Binding =
+        BindingBuilder.bind(notificationMatchEventQueue).to(matchExchange).with("match.#")
 
     @Bean
     fun matchClubEventQueue() = Queue(

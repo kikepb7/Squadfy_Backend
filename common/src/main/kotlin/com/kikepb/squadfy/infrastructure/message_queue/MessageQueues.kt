@@ -6,4 +6,5 @@ object MessageQueues {
     const val CHAT_USER_EVENTS = "chat.user.events"
     const val CLUB_USER_EVENTS = "club.user.events"
     const val MATCH_CLUB_EVENTS = "match.club.events"
+    const val NOTIFICATION_MATCH_EVENTS = "notification.match.events"
 }

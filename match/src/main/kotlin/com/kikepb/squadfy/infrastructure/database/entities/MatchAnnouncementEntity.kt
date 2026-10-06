@@ -44,6 +44,12 @@ class MatchAnnouncementEntity(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: MatchAnnouncementStatus = OPEN,
+    /** When the "announcement opened" push was emitted (spec 005 RN-5). */
+    @Column(name = "opened_notified_at")
+    var openedNotifiedAt: Instant? = null,
+    /** When the "closing soon" reminder was emitted (spec 005 RN-5). */
+    @Column(name = "closing_reminder_sent_at")
+    var closingReminderSentAt: Instant? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

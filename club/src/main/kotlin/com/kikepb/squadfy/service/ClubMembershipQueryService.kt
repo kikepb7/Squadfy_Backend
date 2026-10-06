@@ -10,13 +10,16 @@ import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMemberRepository
+import com.kikepb.squadfy.infrastructure.database.repositories.ClubRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 @Transactional(readOnly = true)
 class ClubMembershipQueryService(
-    private val clubMemberRepository: ClubMemberRepository
+    private val clubMemberRepository: ClubMemberRepository,
+    private val clubRepository: ClubRepository
 ) : ClubMembershipProvider {
 
     override fun findMembership(clubId: ClubId, userId: UserId): ClubMembershipSnapshot? =
@@ -29,6 +32,9 @@ class ClubMembershipQueryService(
 
     override fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot> =
         clubMemberRepository.findAllByClubIdAndLeftAtIsNullOrderByCreatedAtAsc(clubId = clubId).map { it.toSnapshot() }
+
+    override fun findClubName(clubId: ClubId): String? =
+        clubRepository.findByIdOrNull(clubId)?.name
 
     private fun ClubMemberEntity.toSnapshot(): ClubMembershipSnapshot =
         ClubMembershipSnapshot(

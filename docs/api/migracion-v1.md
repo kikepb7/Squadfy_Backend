@@ -59,6 +59,7 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 | `DELETE /api/messages/{messageId}` | `DELETE /api/v1/messages/{messageId}` |
 | `POST /api/notification/register` | `POST /api/v1/devices` → **201** |
 | `DELETE /api/notification/{token}` | `DELETE /api/v1/devices/{token}` |
+| — | `GET / PUT /api/v1/clubs/{clubId}/notification-settings` `{muted}` (silenciar un club) |
 | WebSocket `/ws/chat` | sin cambios |
 
 ## 2. Cambios de modelos desde la última versión de la app
@@ -79,3 +80,18 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 - 403 `NOT_CLUB_MEMBER` (antes 400) al operar sobre un club del que no eres miembro; 403 `FORBIDDEN` si no eres gestor (OWNER/ADMIN).
 - Creaciones (`clubs`, `schedule`, `matches`, `chats`, `devices`, `events`) responden **201**.
 - **Restablecer contraseña**: el email abre `RESET_PASSWORD_URL?token=...` (por defecto el deep link `squadfy://reset-password?token=...`). La app debe capturar ese enlace, pedir la nueva contraseña y llamar a `POST /api/v1/auth/reset-password` con `{ token, newPassword }`.
+
+## 4. Notificaciones push
+
+Solo push (Firebase). La app debe registrar el dispositivo con `POST /api/v1/devices` tras el login. Cada push lleva en `data` el campo `type` para decidir qué pantalla abrir:
+
+| `type` | Cuándo | Destinatarios | `data` adicional |
+|---|---|---|---|
+| `match.announcement.opened` | Se abre la convocatoria | Todos los miembros | `clubId`, `matchId`, `announcementId` |
+| `match.announcement.closing_soon` | 24 h antes del cierre, si quedan plazas | Miembros no apuntados | `clubId`, `matchId`, `announcementId` |
+| `match.teams.published` | Equipos publicados (al cierre o al rectificar) | Jugadores de los equipos | `clubId`, `matchId`, `team` (`A`/`B`) |
+| `match.cancelled` | Partido cancelado | Apuntados | `clubId`, `matchId` |
+| `match.waitlist.promoted` | Pasas de la lista de espera a convocado | El jugador promocionado | `clubId`, `matchId`, `announcementId` |
+| `new_message` | Mensaje de chat | Participantes del chat | `chatId` |
+
+Un usuario que silencia un club (`PUT .../notification-settings {"muted": true}`) no recibe sus push, salvo `match.waitlist.promoted`. El título de las push de chat es ahora el nombre del remitente.

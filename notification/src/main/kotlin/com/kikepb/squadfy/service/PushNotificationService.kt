@@ -102,10 +102,10 @@ class PushNotificationService(
             .map { it.toDeviceTokenModel() }
 
         val notification = PushNotificationModel(
-            title = "new message from $senderUserId",
+            title = senderUsername,
             recipients = recipients,
             message = message,
-            chatId = chatId,
+            collapseKey = chatId.toString(),
             data = mapOf(
                 "chatId" to chatId.toString(),
                 "type" to "new_message"
@@ -113,6 +113,24 @@ class PushNotificationService(
         )
 
         sendWithRetry(notification = notification)
+    }
+
+    /** Sends one push to every registered device of the given users. */
+    @Transactional
+    fun sendToUsers(userIds: Collection<UserId>, title: String, message: String, data: Map<String, String>, collapseKey: String) {
+        if (userIds.isEmpty()) return
+        val recipients = deviceTokenRepository.findByUserIdIn(userIds = userIds.toList()).map { it.toDeviceTokenModel() }
+        if (recipients.isEmpty()) return
+
+        sendWithRetry(
+            notification = PushNotificationModel(
+                title = title,
+                recipients = recipients,
+                message = message,
+                collapseKey = collapseKey,
+                data = data
+            )
+        )
     }
 
     fun sendWithRetry(notification: PushNotificationModel, attempt: Int = 0) {

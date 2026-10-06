@@ -1,6 +1,5 @@
 package com.kikepb.squadfy.domain.model
 
-import com.kikepb.squadfy.domain.type.ChatId
 import java.util.UUID
 
 data class PushNotificationModel(
@@ -8,6 +7,7 @@ data class PushNotificationModel(
     val title: String,
     val recipients: List<DeviceTokenModel>,
     val message: String,
-    val chatId: ChatId,
+    /** Groups notifications on the device (Android collapse key / iOS thread). */
+    val collapseKey: String,
     val data: Map<String, String>
 )

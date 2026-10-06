@@ -30,6 +30,7 @@ class MatchService(
     private val matchAnnouncementService: MatchAnnouncementService,
     private val matchPlanningService: MatchPlanningService,
     private val playerRatingService: PlayerRatingService,
+    private val matchNotificationPublisher: MatchNotificationPublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -68,9 +69,16 @@ class MatchService(
         clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
         if (match.status == COMPLETED) throw InvalidMatchStateException("A completed match cannot be cancelled")
 
+        val enrolled = matchAnnouncementService.getAllEntriesByMatch(matchId = matchId)
         match.status = CANCELLED
         matchRepository.saveAndFlush(match)
         matchAnnouncementService.cancelForMatch(matchId = matchId)
+        matchNotificationPublisher.matchCancelled(
+            clubId = match.clubId,
+            matchId = matchId,
+            matchScheduledAt = match.scheduledAt,
+            enrolledMemberIds = enrolled
+        )
         return loadMatch(matchId = matchId)
     }
 

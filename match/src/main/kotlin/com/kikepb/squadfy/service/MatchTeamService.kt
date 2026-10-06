@@ -28,6 +28,7 @@ class MatchTeamService(
     private val matchAnnouncementService: MatchAnnouncementService,
     private val clubMembershipProvider: ClubMembershipProvider,
     private val playerRatingService: PlayerRatingService,
+    private val matchNotificationPublisher: MatchNotificationPublisher,
     private val clubAccessGuard: ClubAccessGuard
 ) {
 
@@ -54,6 +55,13 @@ class MatchTeamService(
         }
 
         replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB)
+        matchNotificationPublisher.teamsPublished(
+            clubId = match.clubId,
+            matchId = matchId,
+            matchScheduledAt = match.scheduledAt,
+            teamA = teamA,
+            teamB = teamB
+        )
         return matchService.loadMatch(matchId = matchId)
     }
 
@@ -77,6 +85,13 @@ class MatchTeamService(
 
         val (teamA, teamB) = autoAssignTeams(clubId = match.clubId, enrolled = confirmed)
         replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB)
+        matchNotificationPublisher.teamsPublished(
+            clubId = match.clubId,
+            matchId = matchId,
+            matchScheduledAt = match.scheduledAt,
+            teamA = teamA,
+            teamB = teamB
+        )
         return matchService.loadMatch(matchId = matchId)
     }
 

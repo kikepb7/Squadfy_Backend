@@ -27,6 +27,8 @@ service                casos de uso @Service, @Transactional, permisos
 - Consulta síncrona → puerto en `common/domain/<área>/` implementado por el módulo dueño. Ejemplo: `ClubMembershipProvider` (club) usado por `match` vía `ClubAccessGuard`.
 - Notificación asíncrona → evento `SquadfyEvent` (sealed class en `common/domain/events/<área>/`), `EventPublisher.publish`, cola + binding en `RabbitMqConfig`, `@RabbitListener` en el consumidor.
   - **Una familia de eventos nueva (paquete nuevo) debe añadirse a `setTrustedPackages` en `RabbitMqConfig`**; si no, los listeners rechazan los mensajes en silencio. Cúbrelo con un test como `app/.../EventMessagingIntegrationTest.kt`.
+  - Publica con `eventPublisher.publishAfterCommit(...)` dentro de transacciones (nunca anunciar cambios revertidos).
+  - Notificaciones push del ciclo de partido: `match` decide destinatarios vía `MatchNotificationPublisher`; `notification` compone textos (`MatchNotificationMessages`) y respeta los clubes silenciados.
 
 ## API REST
 - Todo endpoint bajo `/api/v1` (un test lo exige): recursos en plural y kebab-case, colecciones de un club en `/api/v1/clubs/{clubId}/...`, recurso concreto en `/api/v1/<recurso>/{id}`, acciones de dominio como `POST /{id}/<accion>`, creaciones con `201`.

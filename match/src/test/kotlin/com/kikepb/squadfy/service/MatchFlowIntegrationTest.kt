@@ -1,6 +1,10 @@
 package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.club.ClubMembershipProvider
+import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.mockito.Mockito.mockingDetails
+import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
+import com.kikepb.squadfy.domain.events.match.MatchEvent
 import com.kikepb.squadfy.domain.club.ClubMembershipSnapshot
 import com.kikepb.squadfy.domain.club.ClubRole
 import com.kikepb.squadfy.domain.club.PlayerPosition
@@ -66,7 +70,9 @@ import kotlin.test.assertTrue
     MatchTeamService::class,
     MatchEventService::class,
     PlayerRatingService::class,
-    MatchSchedulerService::class
+    MatchSchedulerService::class,
+    MatchNotificationPublisher::class,
+    MatchAnnouncementNotificationService::class
 )
 class MatchFlowIntegrationTest {
 
@@ -93,6 +99,13 @@ class MatchFlowIntegrationTest {
     @Autowired lateinit var eventService: MatchEventService
     @Autowired lateinit var ratingService: PlayerRatingService
     @Autowired lateinit var scheduler: MatchSchedulerService
+    @Autowired lateinit var notificationService: MatchAnnouncementNotificationService
+    @MockitoBean lateinit var eventPublisher: EventPublisher
+
+    private fun publishedEvents(): List<MatchEvent> =
+        mockingDetails(eventPublisher).invocations
+            .filter { it.method.name == "publishAfterCommit" }
+            .map { it.arguments.first() as MatchEvent }
 
     private val clubId: ClubId = UUID.randomUUID()
     private val owner: UserId = UUID.randomUUID()
@@ -279,6 +292,9 @@ class MatchFlowIntegrationTest {
         scheduler.closeExpiredMatchAnnouncements()
 
         val published = matchService.getMatchById(matchId = match.id, userId = owner)
+        val teamsEvent = publishedEvents().filterIsInstance<MatchEvent.TeamsPublished>().single()
+        assertEquals(5, teamsEvent.teamAUserIds.size)
+        assertEquals(5, teamsEvent.teamBUserIds.size)
         assertEquals(MatchAnnouncementModel.MatchAnnouncementStatus.CLOSED, announcementOf(match).status)
         assertEquals(5, published.teamA.size)
         assertEquals(5, published.teamB.size)
@@ -355,6 +371,71 @@ class MatchFlowIntegrationTest {
     }
 
     @Test
+    fun `the opening push is emitted once to every member`() {
+        val members = List(3) { UUID.randomUUID().also { clubs.addMember(clubId = clubId, userId = it) } }
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+
+        assertEquals(1, notificationService.notifyOpenedAnnouncements())
+        assertEquals(0, notificationService.notifyOpenedAnnouncements())
+
+        val opened = publishedEvents().filterIsInstance<MatchEvent.AnnouncementOpened>().single()
+        assertEquals((members + owner).toSet(), opened.recipientUserIds.toSet())
+        assertEquals("Test FC", opened.clubName)
+        assertEquals("Europe/Madrid", opened.timeZone)
+    }
+
+    @Test
+    fun `the closing reminder goes once to members not enrolled while places are left`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val enrolled = enrollPlayers(announcementOf(nextMatch()), count = 3)
+        val idle = List(2) { UUID.randomUUID().also { clubs.addMember(clubId = clubId, userId = it) } }
+
+        clock.now = madrid("2026-10-06T21:00") // more than 24 h before closing (Wed 22:00)
+        assertEquals(0, notificationService.sendClosingReminders())
+
+        clock.now = madrid("2026-10-06T23:00")
+        assertEquals(1, notificationService.sendClosingReminders())
+        assertEquals(0, notificationService.sendClosingReminders())
+
+        val reminder = publishedEvents().filterIsInstance<MatchEvent.AnnouncementClosingSoon>().single()
+        assertEquals(7, reminder.freePlaces)
+        assertEquals((idle + owner).toSet(), reminder.recipientUserIds.toSet())
+        assertTrue(enrolled.none { it in reminder.recipientUserIds })
+    }
+
+    @Test
+    fun `no closing reminder when the announcement is full or opened within the last 24 hours`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        enrollPlayers(announcementOf(nextMatch()), count = 10)
+        clock.now = madrid("2026-10-06T23:00")
+        assertEquals(0, notificationService.sendClosingReminders())
+
+        val lateClub = UUID.randomUUID()
+        clubs.addMember(clubId = lateClub, userId = owner, role = ClubRole.OWNER)
+        clock.now = madrid("2026-10-07T10:00") // opens inside the reminder window of Thursday's match
+        scheduleService.createSchedule(lateClub, owner, DayOfWeek.THURSDAY, LocalTime.of(20, 0), "Europe/Madrid", MatchFormat.FIVE_A_SIDE)
+        clock.now = madrid("2026-10-07T11:00")
+        assertEquals(0, notificationService.sendClosingReminders())
+        assertTrue(publishedEvents().none { it is MatchEvent.AnnouncementClosingSoon })
+    }
+
+    @Test
+    fun `cancelling notifies every enrolled player and a promotion notifies the promoted player`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        val announcement = announcementOf(match)
+        val players = enrollPlayers(announcement, count = 11)
+
+        announcementService.withdraw(matchAnnouncementId = announcement.id, userId = players.first())
+        val promoted = publishedEvents().filterIsInstance<MatchEvent.PromotedFromWaitlist>().single()
+        assertEquals(players.last(), promoted.userId)
+
+        matchService.cancelMatch(matchId = match.id, userId = owner)
+        val cancelled = publishedEvents().filterIsInstance<MatchEvent.MatchCancelled>().single()
+        assertEquals(players.drop(1).toSet(), cancelled.recipientUserIds.toSet())
+    }
+
+    @Test
     fun `each player can read their own rating`() {
         createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
         val player = UUID.randomUUID().also { clubs.addMember(clubId = clubId, userId = it) }
@@ -395,4 +476,6 @@ class FakeClubMembershipProvider : ClubMembershipProvider {
 
     override fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot> =
         members.filter { it.clubId == clubId }
+
+    override fun findClubName(clubId: ClubId): String? = "Test FC"
 }

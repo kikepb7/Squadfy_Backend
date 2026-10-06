@@ -93,7 +93,7 @@ class FirebasePushNotificationService(
                             setAndroidConfig(
                                 AndroidConfig.builder()
                                     .setPriority(AndroidConfig.Priority.HIGH)
-                                    .setCollapseKey(notification.chatId.toString())
+                                    .setCollapseKey(notification.collapseKey)
                                     .setRestrictedPackageName("com.kikepb.squadfy")
                                     .build()
                             )
@@ -104,7 +104,7 @@ class FirebasePushNotificationService(
                                     .setAps(
                                         Aps.builder()
                                             .setSound("default")
-                                            .setThreadId(notification.chatId.toString())
+                                            .setThreadId(notification.collapseKey)
                                             .build()
                                     )
                                     .build()

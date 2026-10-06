@@ -21,6 +21,10 @@ interface MatchAnnouncementRepository : JpaRepository<MatchAnnouncementEntity, M
 
     fun findAllByClubIdAndStatusAndClosesAtAfter(clubId: ClubId, status: MatchAnnouncementStatus, now: Instant): List<MatchAnnouncementEntity>
 
+    fun findAllByStatusAndOpensAtLessThanEqualAndOpenedNotifiedAtIsNull(status: MatchAnnouncementStatus, now: Instant): List<MatchAnnouncementEntity>
+
+    fun findAllByStatusAndClosesAtAfterAndClosingReminderSentAtIsNull(status: MatchAnnouncementStatus, now: Instant): List<MatchAnnouncementEntity>
+
     fun findAllByStatusAndClosesAtLessThanEqual(status: MatchAnnouncementStatus, now: Instant): List<MatchAnnouncementEntity>
 
     /** Serializes enroll/withdraw on the same announcement so maxPlayers cannot be exceeded. */
