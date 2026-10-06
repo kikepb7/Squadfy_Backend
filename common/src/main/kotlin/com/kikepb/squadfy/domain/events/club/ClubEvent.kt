@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.kikepb.squadfy.domain.events.SquadfyEvent
 import com.kikepb.squadfy.domain.events.user.InstantToStringSerializer
 import com.kikepb.squadfy.domain.type.ClubId
+import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
 import java.time.Instant
 import java.util.UUID
@@ -18,6 +19,7 @@ sealed class ClubEvent(
     data class MemberJoined(
         val clubId: ClubId,
         val clubName: String,
+        val clubMemberId: ClubMemberId,
         val newMemberUserId: UserId,
         val newMemberUsername: String,
         val adminUserIds: List<UserId>,
@@ -27,9 +29,18 @@ sealed class ClubEvent(
     data class MemberKicked(
         val clubId: ClubId,
         val clubName: String,
+        val clubMemberId: ClubMemberId,
         val kickedUserId: UserId,
         val kickedUsername: String,
         override val eventKey: String = ClubEventConstants.CLUB_MEMBER_KICKED
+    ) : ClubEvent(), SquadfyEvent
+
+    data class MemberLeft(
+        val clubId: ClubId,
+        val clubName: String,
+        val clubMemberId: ClubMemberId,
+        val userId: UserId,
+        override val eventKey: String = ClubEventConstants.CLUB_MEMBER_LEFT
     ) : ClubEvent(), SquadfyEvent
 
     data class JoinRequestReceived(

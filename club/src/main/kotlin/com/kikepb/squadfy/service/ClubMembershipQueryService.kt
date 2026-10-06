@@ -20,15 +20,15 @@ class ClubMembershipQueryService(
 ) : ClubMembershipProvider {
 
     override fun findMembership(clubId: ClubId, userId: UserId): ClubMembershipSnapshot? =
-        clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)?.toSnapshot()
+        clubMemberRepository.findByClubIdAndUserIdAndLeftAtIsNull(clubId = clubId, userId = userId)?.toSnapshot()
 
     override fun findMembers(clubId: ClubId, memberIds: Collection<ClubMemberId>): List<ClubMembershipSnapshot> {
         if (memberIds.isEmpty()) return emptyList()
-        return clubMemberRepository.findAllByClubIdAndIdIn(clubId = clubId, ids = memberIds).map { it.toSnapshot() }
+        return clubMemberRepository.findAllByClubIdAndIdInAndLeftAtIsNull(clubId = clubId, ids = memberIds).map { it.toSnapshot() }
     }
 
     override fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot> =
-        clubMemberRepository.findAllByClubIdOrderByCreatedAtAsc(clubId = clubId).map { it.toSnapshot() }
+        clubMemberRepository.findAllByClubIdAndLeftAtIsNullOrderByCreatedAtAsc(clubId = clubId).map { it.toSnapshot() }
 
     private fun ClubMemberEntity.toSnapshot(): ClubMembershipSnapshot =
         ClubMembershipSnapshot(

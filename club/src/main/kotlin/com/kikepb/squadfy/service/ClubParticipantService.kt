@@ -3,17 +3,17 @@ package com.kikepb.squadfy.service
 import com.kikepb.squadfy.domain.exception.ClubParticipantNotFoundException
 import com.kikepb.squadfy.domain.model.ClubParticipantModel
 import com.kikepb.squadfy.domain.type.UserId
+import com.kikepb.squadfy.domain.user.UserDirectory
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubParticipantEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubParticipantModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubParticipantRepository
-import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 
 @Service
 class ClubParticipantService(
     private val clubParticipantRepository: ClubParticipantRepository,
-    private val jdbcTemplate: JdbcTemplate
+    private val userDirectory: UserDirectory
 ) {
 
     fun createClubParticipant(clubParticipantModel: ClubParticipantModel): ClubParticipantModel =
@@ -31,26 +31,11 @@ class ClubParticipantService(
     fun ensureExists(userId: UserId): ClubParticipantModel {
         findById(userId = userId)?.let { return it }
 
-        val userParticipant = findInUserService(userId = userId)
+        val user = userDirectory.findUser(userId = userId)
             ?: throw ClubParticipantNotFoundException(userId = userId)
 
-        return createClubParticipant(clubParticipantModel = userParticipant)
-    }
-
-    private fun findInUserService(userId: UserId): ClubParticipantModel? {
-        val sql = """
-            SELECT id, username, email
-            FROM user_service.users
-            WHERE id = ?
-        """.trimIndent()
-
-        return jdbcTemplate.query(sql, { rs, _ ->
-            ClubParticipantModel(
-                userId = rs.getObject("id", java.util.UUID::class.java),
-                username = rs.getString("username"),
-                email = rs.getString("email"),
-                profilePictureUrl = null
-            )
-        }, userId).firstOrNull()
+        return createClubParticipant(
+            clubParticipantModel = ClubParticipantModel(userId = user.userId, username = user.username, email = user.email)
+        )
     }
 }

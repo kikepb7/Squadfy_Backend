@@ -61,7 +61,7 @@ class ExistingDatabaseMigrationTest {
         val history = jdbcTemplate.queryForList(
             "SELECT version, type FROM public.flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank"
         ).map { it["version"] to it["type"] }
-        assertEquals(listOf<Pair<Any?, Any?>>("1" to "BASELINE", "2" to "SQL"), history)
+        assertEquals(listOf<Pair<Any?, Any?>>("1" to "BASELINE", "2" to "SQL", "3" to "SQL"), history)
 
         val maxPlayers = jdbcTemplate.queryForObject(
             "SELECT max_players FROM match_service.match_announcements WHERE id = ?",

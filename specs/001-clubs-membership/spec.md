@@ -1,6 +1,6 @@
 # 001 — Clubes y membresía
 
-- **Estado**: En curso (núcleo hecho; gestión de miembros pendiente)
+- **Estado**: Hecha (rama `club-management-feature`), salvo la pregunta abierta sobre vetar a expulsados
 - **Módulos**: club, common
 - **Dependencias**: autenticación (user)
 
@@ -26,8 +26,15 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - **RN-6**: La posición es una de `GOALKEEPER`, `DEFENDER`, `MIDFIELDER`, `FORWARD` (opcional).
 - **RN-7**: Solo los miembros pueden ver el club y sus miembros. Solo los gestores pueden cambiar logo, código, roles o expulsar.
 - **RN-8**: El owner no puede salir del club ni ser expulsado sin transferir antes la propiedad.
-- **RN-9**: Un admin no puede expulsar ni degradar al owner ni a otro admin; el owner puede con todos.
-- **RN-10**: Al salir o ser expulsado, se conservan sus estadísticas y su participación histórica en partidos (borrado lógico de la membresía), pero se le elimina de convocatorias abiertas.
+- **RN-9**: Jerarquía de roles:
+  - El `OWNER` puede expulsar a cualquier miembro y asignarle `ADMIN`, `CAPTAIN` o `PLAYER`.
+  - Un `ADMIN` solo actúa sobre `CAPTAIN` y `PLAYER`: puede expulsarlos y alternarlos entre `CAPTAIN` y `PLAYER`; **no** concede ni retira `ADMIN`.
+  - Nadie se expulsa ni cambia su propio rol (para irse se usa "salir del club").
+  - El rol `OWNER` solo cambia mediante transferencia (RN-11).
+- **RN-10**: Al salir o ser expulsado, se conservan sus estadísticas, rating y participación histórica en partidos (borrado lógico de la membresía), deja de contar como miembro y se le retira de las convocatorias abiertas (si estaba confirmado, sube el primero de la lista de espera).
+- **RN-11**: El owner transfiere la propiedad a otro miembro activo: ese miembro pasa a `OWNER` y el antiguo owner pasa a `ADMIN`.
+- **RN-12**: Quien salió o fue expulsado puede volver a unirse con un código válido; recupera la misma membresía (historial y rating) con rol `PLAYER`.
+- **RN-13**: Los gestores editan nombre, descripción y límite de miembros del club; el límite no puede quedar por debajo del número actual de miembros.
 
 ## Criterios de aceptación
 - **CA-1** (RN-3/4): Dado un código válido, cuando un usuario no miembro se une, entonces es `PLAYER` y `membersCount` aumenta en 1; si ya era miembro → 409.
@@ -37,29 +44,37 @@ Un usuario crea un club deportivo y comparte un código para que otros se unan. 
 - **CA-5** (RN-7): Un `PLAYER` que intenta subir logo o regenerar código → 403 y **no** se sube ningún fichero.
 - **CA-6** (RN-8): El owner que intenta salir → 409 con mensaje que indique transferir la propiedad.
 - **CA-7** (RN-10): Un miembro que sale deja de aparecer en el listado de miembros y en convocatorias abiertas, pero sus eventos de partidos pasados se mantienen.
+- **CA-8** (RN-9): Un `ADMIN` que intenta expulsar a otro `ADMIN` o hacer `ADMIN` a un `PLAYER` → 403; el `OWNER` sí puede.
+- **CA-9** (RN-9): Cualquier miembro que intenta expulsarse o cambiar su propio rol → 400.
+- **CA-10** (RN-10): En un 5v5 con 10 confirmados y uno en espera, si un confirmado sale del club, el de la lista de espera pasa a confirmado.
+- **CA-11** (RN-11): Tras transferir, el antiguo owner es `ADMIN`, el nuevo es `OWNER` y `ownerId` del club cambia; el antiguo owner ya puede salir.
+- **CA-12** (RN-12): Un jugador expulsado que vuelve con el código conserva su `clubMemberId` y su rating, con rol `PLAYER`.
+- **CA-13** (RN-13): Bajar `maxMembers` por debajo de los miembros actuales → 400.
 
-## API (contrato)
+## API (contrato v1)
 | Método | Ruta | Permiso | Estado |
 |---|---|---|---|
-| GET | `/api/club` | autenticado | ✅ |
-| POST | `/api/club/create` | autenticado | ✅ |
-| GET | `/api/club/{clubId}` | miembro | ✅ |
-| POST | `/api/club/join` | autenticado | ✅ |
-| GET | `/api/club/{clubId}/members` | miembro | ✅ |
-| PATCH | `/api/club/{clubId}/members/me` | miembro | ✅ |
-| POST | `/api/club/{clubId}/logo` (multipart `clubLogo`) | gestor | ✅ |
-| POST | `/api/club/{clubId}/regenerate-invitation-code` | gestor | ✅ |
-| DELETE | `/api/club/{clubId}/members/me` | miembro | ❌ |
-| DELETE | `/api/club/{clubId}/members/{memberId}` | gestor | ❌ |
-| PATCH | `/api/club/{clubId}/members/{memberId}/role` | gestor (RN-9) | ❌ |
-| POST | `/api/club/{clubId}/transfer-ownership` | owner | ❌ |
-| PATCH | `/api/club/{clubId}` | gestor | ❌ |
+| GET | `/api/v1/clubs` | autenticado | ✅ |
+| POST | `/api/v1/clubs` | autenticado | ✅ |
+| POST | `/api/v1/clubs/join` | autenticado | ✅ (+ RN-12) |
+| GET | `/api/v1/clubs/{clubId}` | miembro | ✅ |
+| PATCH | `/api/v1/clubs/{clubId}` `{name?, description?, maxMembers?}` | gestor | nuevo |
+| PUT | `/api/v1/clubs/{clubId}/logo` | gestor | ✅ |
+| POST | `/api/v1/clubs/{clubId}/invitation-code` | gestor | ✅ |
+| GET | `/api/v1/clubs/{clubId}/members` | miembro | ✅ |
+| PATCH | `/api/v1/clubs/{clubId}/members/me` | miembro | ✅ |
+| DELETE | `/api/v1/clubs/{clubId}/members/me` → 204 | miembro (no owner) | nuevo |
+| DELETE | `/api/v1/clubs/{clubId}/members/{memberId}` → 204 | gestor (RN-9) | nuevo |
+| PATCH | `/api/v1/clubs/{clubId}/members/{memberId}/role` `{role}` | gestor (RN-9) | nuevo |
+| POST | `/api/v1/clubs/{clubId}/transfer-ownership` `{memberId}` | owner | nuevo |
 
 ## Fuera de alcance
 - Solicitudes de unión con aprobación (los eventos `JoinRequest*` existen pero no son MVP).
+- Borrar un club o que el owner abandone un club en el que es el único miembro.
 - Borrado definitivo de clubes.
 
 ## Preguntas abiertas
 - [x] El código de invitación lo ve cualquier miembro (decidido 2026-10-06).
 - [x] El email de un miembro **no** se muestra al resto; solo username y foto (decidido 2026-10-06). Pendiente de implementar (T16).
 - [x] Un `CAPTAIN` **no** gestiona convocatorias ni equipos (decidido 2026-10-06); gestor = `OWNER` o `ADMIN`.
+- [ ] ¿Un jugador **expulsado** puede volver con el código (RN-12) o debe quedar vetado? Por defecto puede volver; el gestor puede regenerar el código.

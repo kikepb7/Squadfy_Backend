@@ -1,12 +1,13 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.club.PlayerPosition
+import com.kikepb.squadfy.domain.events.club.ClubEvent
 import com.kikepb.squadfy.domain.exception.ClubCapacityReachedException
 import com.kikepb.squadfy.domain.exception.ClubInviteCodeInvalidException
 import com.kikepb.squadfy.domain.exception.ClubMembershipAlreadyExistsException
 import com.kikepb.squadfy.domain.exception.ClubNotFoundException
 import com.kikepb.squadfy.domain.exception.ClubParticipantNotFoundException
-import com.kikepb.squadfy.domain.club.PlayerPosition
-import com.kikepb.squadfy.domain.exception.ForbiddenException
+import com.kikepb.squadfy.domain.exception.InvalidClubOperationException
 import com.kikepb.squadfy.domain.model.ClubMemberModel
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole
 import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole.PLAYER
@@ -22,6 +23,7 @@ import com.kikepb.squadfy.infrastructure.database.mappers.toClubModel
 import com.kikepb.squadfy.infrastructure.database.mappers.toEntityRole
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMemberRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubRepository
+import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.storage.SupabaseStorageService
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -33,7 +35,9 @@ class ClubService(
     private val clubRepository: ClubRepository,
     private val clubMemberRepository: ClubMemberRepository,
     private val clubParticipantService: ClubParticipantService,
-    private val storageService: SupabaseStorageService
+    private val clubMemberGuard: ClubMemberGuard,
+    private val storageService: SupabaseStorageService,
+    private val eventPublisher: EventPublisher
 ) {
     @Transactional
     fun createClub(userId: UserId, name: String, description: String?, clubLogoUrl: String?, maxMembers: Int?): ClubModel {
@@ -62,51 +66,89 @@ class ClubService(
     }
 
     fun getClubsForUser(userId: UserId): List<ClubModel> {
-        val memberships = clubMemberRepository.findAllByUserIdOrderByCreatedAtDesc(userId = userId)
+        val memberships = clubMemberRepository.findAllByUserIdAndLeftAtIsNullOrderByCreatedAtDesc(userId = userId)
         val clubIds = memberships.map { it.clubId }.distinct()
         val clubs = clubRepository.findAllById(clubIds).associateBy { requireNotNull(it.id) }
 
         return clubIds.mapNotNull { clubId ->
-            clubs[clubId]?.toClubModel(membersCount = clubMemberRepository.countByClubId(clubId = clubId))
+            clubs[clubId]?.toClubModel(membersCount = activeMembersCount(clubId = clubId))
         }
     }
 
     fun getClubById(clubId: ClubId, userId: UserId): ClubModel {
-        ensureIsClubMember(clubId = clubId, userId = userId)
-        val club = clubRepository.findByIdOrNull(clubId) ?: throw ClubNotFoundException()
-        return club.toClubModel(membersCount = clubMemberRepository.countByClubId(clubId = clubId))
+        clubMemberGuard.requireMember(clubId = clubId, userId = userId)
+        return findClub(clubId = clubId).toClubModel(membersCount = activeMembersCount(clubId = clubId))
     }
 
+    /** Joins with an invitation code; a former member gets the same membership back as PLAYER (RN-12). */
     @Transactional
     fun joinClub(userId: UserId, invitationCode: String, shirtNumber: Int?, position: PlayerPosition?): ClubModel {
-        ensureUserExists(userId = userId)
+        val participant = ensureUserExists(userId = userId)
 
         val normalizedCode = invitationCode.trim().uppercase()
         val club = clubRepository.findByInvitationCode(invitationCode = normalizedCode) ?: throw ClubInviteCodeInvalidException()
         val clubId = requireNotNull(club.id)
 
-        if (clubMemberRepository.existsByClubIdAndUserId(clubId = clubId, userId = userId)) throw ClubMembershipAlreadyExistsException()
+        val previousMembership = clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)
+        if (previousMembership != null && previousMembership.leftAt == null) throw ClubMembershipAlreadyExistsException()
 
-        val membersCount = clubMemberRepository.countByClubId(clubId = clubId)
-        if (club.maxMembers != null && membersCount >= club.maxMembers!!) throw ClubCapacityReachedException()
+        val membersCount = activeMembersCount(clubId = clubId)
+        club.maxMembers?.let { if (membersCount >= it) throw ClubCapacityReachedException() }
 
-        clubMemberRepository.saveAndFlush(
-            ClubMemberEntity(
+        val membership = previousMembership?.apply {
+            leftAt = null
+            role = PLAYER.toEntityRole()
+            shirtNumber?.let { this.shirtNumber = it }
+            position?.let { this.position = it.name }
+        } ?: ClubMemberEntity(
+            clubId = clubId,
+            userId = userId,
+            shirtNumber = shirtNumber,
+            position = position?.name,
+            role = PLAYER.toEntityRole()
+        )
+        val saved = clubMemberRepository.saveAndFlush(membership)
+
+        eventPublisher.publishAfterCommit(
+            ClubEvent.MemberJoined(
                 clubId = clubId,
-                userId = userId,
-                shirtNumber = shirtNumber,
-                position = position?.name,
-                role = PLAYER.toEntityRole()
+                clubName = club.name,
+                clubMemberId = requireNotNull(saved.id),
+                newMemberUserId = userId,
+                newMemberUsername = participant.username,
+                adminUserIds = clubMemberRepository.findAllByClubIdAndLeftAtIsNullOrderByCreatedAtAsc(clubId = clubId)
+                    .filter { it.role == OWNER || it.role == ADMIN }
+                    .map { it.userId }
             )
         )
 
         return club.toClubModel(membersCount = membersCount + 1)
     }
 
+    /** Edits the club's name, description and member limit (managers, RN-13). */
+    @Transactional
+    fun updateClub(clubId: ClubId, userId: UserId, name: String?, description: String?, maxMembers: Int?): ClubModel {
+        clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val club = findClub(clubId = clubId)
+        val membersCount = activeMembersCount(clubId = clubId)
+
+        maxMembers?.let {
+            if (it < membersCount) {
+                throw InvalidClubOperationException("maxMembers cannot be lower than the current members ($membersCount)")
+            }
+            club.maxMembers = it
+        }
+        name?.let { club.name = it.trim() }
+        description?.let { club.description = it.trim() }
+
+        clubRepository.saveAndFlush(club)
+        return club.toClubModel(membersCount = membersCount)
+    }
+
     @Transactional
     fun updateClubLogo(clubId: ClubId, userId: UserId, bytes: ByteArray, mimeType: String): ClubModel {
-        ensureCanManageClub(clubId = clubId, userId = userId)
-        val club = clubRepository.findByIdOrNull(clubId) ?: throw ClubNotFoundException()
+        clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val club = findClub(clubId = clubId)
         club.clubLogoUrl = storageService.uploadImage(
             bucket = CLUB_LOGO_BUCKET,
             folder = CLUB_LOGO_FOLDER,
@@ -114,13 +156,13 @@ class ClubService(
             mimeType = mimeType
         )
         clubRepository.saveAndFlush(club)
-        return club.toClubModel(membersCount = clubMemberRepository.countByClubId(clubId = clubId))
+        return club.toClubModel(membersCount = activeMembersCount(clubId = clubId))
     }
 
     @Transactional
     fun regenerateInvitationCode(clubId: ClubId, userId: UserId): String {
-        ensureCanManageClub(clubId = clubId, userId = userId)
-        val club = clubRepository.findByIdOrNull(clubId) ?: throw ClubNotFoundException()
+        clubMemberGuard.requireManager(clubId = clubId, userId = userId)
+        val club = findClub(clubId = clubId)
         val newCode = generateUniqueInvitationCode()
         club.invitationCode = newCode
         clubRepository.saveAndFlush(club)
@@ -128,8 +170,8 @@ class ClubService(
     }
 
     fun getMembers(clubId: ClubId, userId: UserId): List<ClubMemberModel> {
-        ensureIsClubMember(clubId = clubId, userId = userId)
-        val members = clubMemberRepository.findAllByClubIdWithUserParticipant(clubId = clubId)
+        clubMemberGuard.requireMember(clubId = clubId, userId = userId)
+        val members = clubMemberRepository.findAllActiveByClubIdWithUserParticipant(clubId = clubId)
 
         return members.map { member ->
             val userSnapshot = member.userParticipant ?: throw ClubParticipantNotFoundException(userId = member.userId)
@@ -143,8 +185,7 @@ class ClubService(
 
     @Transactional
     fun updateMyMembership(clubId: ClubId, userId: UserId, shirtNumber: Int?, position: PlayerPosition?): ClubMemberModel {
-        val membership = clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)
-            ?: throw ForbiddenException()
+        val membership = clubMemberGuard.requireMember(clubId = clubId, userId = userId)
 
         shirtNumber?.let { membership.shirtNumber = it }
         position?.let { membership.position = it.name }
@@ -158,20 +199,13 @@ class ClubService(
         )
     }
 
-    private fun ensureCanManageClub(clubId: ClubId, userId: UserId) {
-        val membership = clubMemberRepository.findByClubIdAndUserId(clubId = clubId, userId = userId)
-            ?: throw ForbiddenException()
+    private fun findClub(clubId: ClubId): ClubEntity =
+        clubRepository.findByIdOrNull(clubId) ?: throw ClubNotFoundException()
 
-        if (membership.role !in setOf(OWNER, ADMIN)) throw ForbiddenException()
-    }
+    private fun activeMembersCount(clubId: ClubId): Int =
+        clubMemberRepository.countByClubIdAndLeftAtIsNull(clubId = clubId)
 
-    private fun ensureIsClubMember(clubId: ClubId, userId: UserId) {
-        if (!clubMemberRepository.existsByClubIdAndUserId(clubId = clubId, userId = userId)) throw ForbiddenException()
-    }
-
-    private fun ensureUserExists(userId: UserId) {
-        clubParticipantService.ensureExists(userId = userId)
-    }
+    private fun ensureUserExists(userId: UserId) = clubParticipantService.ensureExists(userId = userId)
 
     private fun generateUniqueInvitationCode(): String {
         var code = randomCode()

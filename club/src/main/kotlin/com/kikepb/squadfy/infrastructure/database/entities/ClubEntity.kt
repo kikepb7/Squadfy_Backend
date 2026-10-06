@@ -32,7 +32,7 @@ class ClubEntity(
     var description: String? = null,
     @Column(nullable = true)
     var clubLogoUrl: String? = null,
-    @Column(name = "owner_id", nullable = false, updatable = false)
+    @Column(name = "owner_id", nullable = false)
     var ownerId: UserId,
     @Column(nullable = false, unique = true)
     var invitationCode: String,

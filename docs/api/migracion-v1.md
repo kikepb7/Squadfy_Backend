@@ -24,6 +24,11 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 | `POST /api/club/{clubId}/regenerate-invitation-code` | `POST /api/v1/clubs/{clubId}/invitation-code` |
 | `GET /api/club/{clubId}/members` | `GET /api/v1/clubs/{clubId}/members` |
 | `PATCH /api/club/{clubId}/members/me` | `PATCH /api/v1/clubs/{clubId}/members/me` |
+| — | `PATCH /api/v1/clubs/{clubId}` `{name?, description?, maxMembers?}` (gestores) |
+| — | `DELETE /api/v1/clubs/{clubId}/members/me` → **204** salir del club (el owner debe transferir antes: 409) |
+| — | `DELETE /api/v1/clubs/{clubId}/members/{memberId}` → **204** expulsar (owner: cualquiera; admin: capitanes y jugadores) |
+| — | `PATCH /api/v1/clubs/{clubId}/members/{memberId}/role` `{role: ADMIN \| CAPTAIN \| PLAYER}` |
+| — | `POST /api/v1/clubs/{clubId}/transfer-ownership` `{memberId}` (el owner pasa a ADMIN) |
 | `POST /api/match-schedules` (con `clubId` en el cuerpo) | `POST /api/v1/clubs/{clubId}/schedule` → **201** (sin `clubId` en el cuerpo) |
 | `GET /api/match-schedules/club/{clubId}` | `GET /api/v1/clubs/{clubId}/schedule` |
 | `PATCH /api/match-schedules/{scheduleId}` | `PATCH /api/v1/clubs/{clubId}/schedule` |
@@ -62,6 +67,7 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 - **Convocatoria vigente** (nuevo): `{ announcement, matchScheduledAt, myStatus: NOT_ENROLLED | CONFIRMED | WAITLISTED, myWaitlistPosition }`; 404 si no hay partido programado.
 - **Ratings** (nuevo): clasificación `[{ rank, clubMemberId, rating, matchesRated, isProvisional }]`; `/me` añade `rank` y `totalPlayers`. Nombre y foto se cruzan con `/clubs/{clubId}/members`.
 - **Equilibrio de equipos** (gestores): `teamA/teamB.playerRatings` con el rating de cada jugador.
+- **Membresía**: quien sale o es expulsado deja de verse en el club y sale de las convocatorias abiertas (su plaza pasa a la lista de espera). Si vuelve a unirse con el código conserva su `clubMemberId` y su rating, con rol `PLAYER`.
 - **Privacidad**: `email` desaparece de los miembros del club y de los participantes/usuarios de chat. El propio email está en `GET /api/v1/me`.
 
 ## 3. Comportamiento y errores

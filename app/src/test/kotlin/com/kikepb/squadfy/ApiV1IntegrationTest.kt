@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.kikepb.squadfy.service.JwtService
 import com.kikepb.squadfy.testing.InfrastructureTestContainersConfiguration
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -17,6 +18,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -110,6 +112,66 @@ class ApiV1IntegrationTest {
         assertEquals(200, ratings.status)
         assertEquals(1, ratings.json[0]["rank"].asInt())
         assertEquals(1, call("GET", "/api/v1/clubs/$clubId/ratings/me", token).json["totalPlayers"].asInt())
+    }
+
+    @Test
+    fun `a confirmed player who leaves the club frees the place for the first on the waitlist`() {
+        val (_, ownerToken) = newUser()
+        val club = call("POST", "/api/v1/clubs", ownerToken, """{"name":"Waitlist FC"}""").json
+        val clubId = club["id"].asText()
+        call("POST", "/api/v1/clubs/$clubId/schedule", ownerToken, """{"matchDayOfWeek":"THURSDAY","matchTime":"20:00:00","format":"FIVE_A_SIDE"}""")
+
+        val players = List(11) { newUser() }
+        players.forEach { (_, token) ->
+            assertEquals(200, call("POST", "/api/v1/clubs/join", token, """{"invitationCode":"${club["invitationCode"].asText()}"}""").status)
+        }
+        val announcementId = call("GET", "/api/v1/clubs/$clubId/announcements/current", ownerToken).json["announcement"]["id"].asText()
+        players.forEach { (_, token) -> call("POST", "/api/v1/announcements/$announcementId/enrollment", token) }
+
+        val before = call("GET", "/api/v1/announcements/$announcementId", ownerToken).json
+        assertEquals(10, before["confirmedCount"].asInt())
+        val firstWaitlisted = before["waitlist"][0]["clubMemberId"].asText()
+        val leaverToken = players.first().second
+        val leaverMemberId = before["entries"][0]["clubMemberId"].asText()
+
+        assertEquals(204, call("DELETE", "/api/v1/clubs/$clubId/members/me", leaverToken).status)
+
+        await().atMost(Duration.ofSeconds(15)).untilAsserted {
+            val after = call("GET", "/api/v1/announcements/$announcementId", ownerToken).json
+            val confirmed = after["entries"].map { it["clubMemberId"].asText() }
+            assertEquals(10, after["confirmedCount"].asInt())
+            assertEquals(0, after["waitlistCount"].asInt())
+            assertTrue(firstWaitlisted in confirmed)
+            assertFalse(leaverMemberId in confirmed)
+        }
+        assertEquals(403, call("GET", "/api/v1/clubs/$clubId", leaverToken).status)
+    }
+
+    @Test
+    fun `member management endpoints`() {
+        val (_, ownerToken) = newUser()
+        val (playerId, playerToken) = newUser()
+        val club = call("POST", "/api/v1/clubs", ownerToken, """{"name":"Roles FC"}""").json
+        val clubId = club["id"].asText()
+        call("POST", "/api/v1/clubs/join", playerToken, """{"invitationCode":"${club["invitationCode"].asText()}"}""")
+        val playerMemberId = call("GET", "/api/v1/clubs/$clubId/members", ownerToken).json
+            .single { it["userId"].asText() == playerId.toString() }["id"].asText()
+
+        assertEquals(409, call("DELETE", "/api/v1/clubs/$clubId/members/me", ownerToken).status)
+        assertEquals(403, call("PATCH", "/api/v1/clubs/$clubId/members/$playerMemberId/role", playerToken, """{"role":"ADMIN"}""").status)
+
+        val promoted = call("PATCH", "/api/v1/clubs/$clubId/members/$playerMemberId/role", ownerToken, """{"role":"CAPTAIN"}""")
+        assertEquals(200, promoted.status, promoted.body)
+        assertEquals("CAPTAIN", promoted.json["role"].asText())
+
+        val edited = call("PATCH", "/api/v1/clubs/$clubId", ownerToken, """{"name":"Renamed FC","maxMembers":1}""")
+        assertEquals(400, edited.status)
+
+        val transferred = call("POST", "/api/v1/clubs/$clubId/transfer-ownership", ownerToken, """{"memberId":"$playerMemberId"}""")
+        assertEquals(200, transferred.status, transferred.body)
+        assertEquals(playerId.toString(), transferred.json["ownerId"].asText())
+
+        assertEquals(204, call("DELETE", "/api/v1/clubs/$clubId/members/me", ownerToken).status)
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.kikepb.squadfy.domain.events.SquadfyEvent
 import com.kikepb.squadfy.domain.events.chat.ChatEvent
 import com.kikepb.squadfy.domain.events.club.ClubEvent
+import com.kikepb.squadfy.domain.events.club.ClubEventConstants
 import com.kikepb.squadfy.domain.events.user.UserEvent
 import com.kikepb.squadfy.domain.events.chat.ChatEventConstant
 import com.kikepb.squadfy.domain.events.user.UserEventConstants
@@ -96,6 +97,28 @@ class RabbitMqConfig {
         true,
         false
     )
+
+    @Bean
+    fun clubExchange() = TopicExchange(
+        ClubEventConstants.CLUB_EXCHANGE,
+        true,
+        false
+    )
+
+    @Bean
+    fun matchClubEventQueue() = Queue(
+        MessageQueues.MATCH_CLUB_EVENTS,
+        true
+    )
+
+    /** match removes former members from open announcements (spec 001 RN-10). */
+    @Bean
+    fun matchClubMemberLeftBinding(matchClubEventQueue: Queue, clubExchange: TopicExchange): Binding =
+        BindingBuilder.bind(matchClubEventQueue).to(clubExchange).with(ClubEventConstants.CLUB_MEMBER_LEFT)
+
+    @Bean
+    fun matchClubMemberKickedBinding(matchClubEventQueue: Queue, clubExchange: TopicExchange): Binding =
+        BindingBuilder.bind(matchClubEventQueue).to(clubExchange).with(ClubEventConstants.CLUB_MEMBER_KICKED)
 
     @Bean
     fun notificationUserEventQueue() = Queue(

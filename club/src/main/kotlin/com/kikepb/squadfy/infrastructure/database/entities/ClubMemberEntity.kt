@@ -60,6 +60,9 @@ class ClubMemberEntity(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var role: ClubMemberRoleEntity = PLAYER,
+    /** Null while the membership is active; set when the member leaves or is removed. */
+    @Column(name = "left_at")
+    var leftAt: Instant? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

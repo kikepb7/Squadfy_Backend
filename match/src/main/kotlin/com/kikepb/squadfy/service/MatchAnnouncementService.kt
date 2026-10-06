@@ -158,6 +158,27 @@ class MatchAnnouncementService(
         return matchAnnouncement.withEntries()
     }
 
+    /**
+     * A member who left the club (or was removed) is taken out of every open announcement of that
+     * club; confirmed places go to the waitlist (spec 001 RN-10). Closed announcements are kept.
+     */
+    @Transactional
+    fun withdrawFromOpenAnnouncements(clubId: ClubId, clubMemberId: ClubMemberId) {
+        matchAnnouncementRepository.findAllByClubIdAndStatusAndClosesAtAfter(clubId = clubId, status = OPEN, now = clock.instant())
+            .forEach { announcement ->
+                val announcementId = requireNotNull(announcement.id)
+                matchAnnouncementRepository.findByIdForUpdate(id = announcementId)
+                val entry = matchAnnouncementEntryRepository.findByMatchAnnouncementIdAndClubMemberId(
+                    matchAnnouncementId = announcementId,
+                    clubMemberId = clubMemberId
+                ) ?: return@forEach
+
+                matchAnnouncementEntryRepository.delete(entry)
+                matchAnnouncementEntryRepository.flush()
+                if (entry.status == CONFIRMED) promoteFirstWaitlisted(matchAnnouncementId = announcementId)
+            }
+    }
+
     /** The first player on the waitlist takes the free confirmed place. */
     private fun promoteFirstWaitlisted(matchAnnouncementId: MatchAnnouncementId) {
         matchAnnouncementEntryRepository.findFirstByMatchAnnouncementIdAndStatusOrderByEnrolledAtAsc(

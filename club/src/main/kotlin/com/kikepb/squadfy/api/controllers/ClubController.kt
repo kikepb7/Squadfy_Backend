@@ -1,5 +1,11 @@
 package com.kikepb.squadfy.api.controllers
 
+import org.springframework.web.bind.annotation.DeleteMapping
+import com.kikepb.squadfy.service.ClubMemberManagementService
+import com.kikepb.squadfy.domain.type.ClubMemberId
+import com.kikepb.squadfy.api.dto.UpdateClubRequest
+import com.kikepb.squadfy.api.dto.TransferOwnershipRequest
+import com.kikepb.squadfy.api.dto.ChangeMemberRoleRequest
 import com.kikepb.squadfy.api.dto.ClubDto
 import com.kikepb.squadfy.api.dto.ClubMemberDto
 import com.kikepb.squadfy.api.dto.CreateClubRequest
@@ -31,7 +37,8 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/api/v1/clubs")
 @Tag(name = "Clubs", description = "Clubs, invitations and memberships")
 class ClubController(
-    private val clubService: ClubService
+    private val clubService: ClubService,
+    private val clubMemberManagementService: ClubMemberManagementService
 ) {
 
     @GetMapping
@@ -70,6 +77,32 @@ class ClubController(
             .getClubById(clubId = clubId, userId = requestUserId)
             .toClubDto()
 
+    @PatchMapping("/{clubId}")
+    @Operation(summary = "Edit name, description or member limit (managers only)")
+    fun updateClub(
+        @PathVariable("clubId") clubId: ClubId,
+        @Valid @RequestBody body: UpdateClubRequest
+    ): ClubDto =
+        clubService.updateClub(
+            clubId = clubId,
+            userId = requestUserId,
+            name = body.name,
+            description = body.description,
+            maxMembers = body.maxMembers
+        ).toClubDto()
+
+    @PostMapping("/{clubId}/transfer-ownership")
+    @Operation(summary = "Make another member the OWNER; the current owner becomes ADMIN (owner only)")
+    fun transferOwnership(
+        @PathVariable("clubId") clubId: ClubId,
+        @Valid @RequestBody body: TransferOwnershipRequest
+    ): ClubDto =
+        clubMemberManagementService.transferOwnership(
+            clubId = clubId,
+            userId = requestUserId,
+            newOwnerMemberId = body.memberId
+        ).toClubDto()
+
     @PutMapping("/{clubId}/logo", consumes = ["multipart/form-data"])
     @Operation(summary = "Upload the club logo (managers only); part name `clubLogo`")
     fun uploadClubLogo(
@@ -106,5 +139,33 @@ class ClubController(
             userId = requestUserId,
             shirtNumber = body.shirtNumber,
             position = body.position
+        ).toClubMemberDto()
+
+    @DeleteMapping("/{clubId}/members/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Leave the club; the owner must transfer the ownership first")
+    fun leaveClub(@PathVariable("clubId") clubId: ClubId) =
+        clubMemberManagementService.leaveClub(clubId = clubId, userId = requestUserId)
+
+    @DeleteMapping("/{clubId}/members/{memberId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove a member (owner: anyone; admin: captains and players)")
+    fun removeMember(
+        @PathVariable("clubId") clubId: ClubId,
+        @PathVariable("memberId") memberId: ClubMemberId
+    ) = clubMemberManagementService.removeMember(clubId = clubId, userId = requestUserId, memberId = memberId)
+
+    @PatchMapping("/{clubId}/members/{memberId}/role")
+    @Operation(summary = "Change a member's role (owner: ADMIN/CAPTAIN/PLAYER; admin: CAPTAIN/PLAYER of non-admins)")
+    fun changeMemberRole(
+        @PathVariable("clubId") clubId: ClubId,
+        @PathVariable("memberId") memberId: ClubMemberId,
+        @Valid @RequestBody body: ChangeMemberRoleRequest
+    ): ClubMemberDto =
+        clubMemberManagementService.changeMemberRole(
+            clubId = clubId,
+            userId = requestUserId,
+            memberId = memberId,
+            newRole = body.role
         ).toClubMemberDto()
 }

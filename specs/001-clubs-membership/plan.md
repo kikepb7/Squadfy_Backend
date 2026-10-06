@@ -1,20 +1,31 @@
 # 001 — Plan técnico
 
 ## Enfoque
-Ampliar `ClubService` con casos de uso de gestión de miembros manteniendo las comprobaciones de permisos en servicio. La membresía pasa a tener borrado lógico (`left_at`) para conservar el histórico que referencian `match_service` (eventos, equipos).
+Gestión de miembros en `ClubService`, con permisos en servicio y reglas de jerarquía en una función pura. Borrado lógico de la membresía para conservar el histórico que referencian `match_service` (eventos, equipos, ratings por `club_member_id`).
 
-## Cambios por capa
-- **domain**: `ClubMemberModel` + reglas de jerarquía de roles (`canModerate(actor, target)`), función pura con tests.
-- **infrastructure**: columna `left_at TIMESTAMPTZ NULL` en `club_members`; los repositorios filtran `left_at IS NULL`. El índice único `(club_id, user_id)` pasa a parcial (`WHERE left_at IS NULL`) para permitir volver a unirse.
-- **service**: `leaveClub`, `kickMember`, `changeRole`, `transferOwnership`, `updateClub`. `ClubMembershipQueryService` ignora miembros que han salido.
-- **eventos**: publicar `ClubEvent.MemberJoined`/`MemberKicked` y nuevo `MemberLeft` en `club.events`; `match` los consume para retirar al miembro de convocatorias abiertas (RN-10).
-- **api**: nuevos endpoints de la tabla; DTO `ClubMemberDto` sin email (pendiente de la pregunta abierta).
-- **user → club**: sustituir `ClubParticipantService.findInUserService` (SQL a `user_service`) por un puerto `UserDirectory` en `common` implementado por `user`.
+## Membresía con borrado lógico
+- Migración Flyway `V3`: `club_service.club_members.left_at timestamptz null`.
+- Una membresía activa tiene `left_at IS NULL`. Todas las consultas de miembros (permisos, recuento, listados, puerto `ClubMembershipProvider`) filtran por activas.
+- Volver a unirse **reactiva la misma fila** (RN-12): el índice único `(club_id, user_id)` se mantiene y el `clubMemberId` no cambia, así que el rating y el historial se conservan.
 
-## Riesgos
-- Cambiar el índice único requiere migración (depende de Flyway, spec 006).
-- Consumir eventos en `match` añade consistencia eventual: aceptable para RN-10.
+## Dominio
+- `ClubRolePolicy` (`club/domain/model`), pura y testeada: `canRemove(actor, target)`, `canAssign(actor, target, newRole)`, con los casos de RN-9.
+
+## Casos de uso (`ClubService`)
+- `leaveClub`, `removeMember`, `changeMemberRole`, `transferOwnership`, `updateClub`; `joinClub` reactiva membresías antiguas.
+- `ClubEntity.ownerId` pasa a actualizable (transferencia).
+
+## Eventos (RN-10)
+- `ClubEvent.MemberLeft` (nuevo) y `ClubEvent.MemberKicked` llevan `clubMemberId`; `MemberJoined` se publica al unirse (consumidor en spec 005).
+- `EventPublisher.publishAfterCommit`: publica al confirmar la transacción para no anunciar cambios revertidos (también lo usará la spec 005).
+- `RabbitMqConfig`: exchange `club.events` y cola `match.club.events` enlazada a `club.member.left` y `club.member.kicked`.
+- `match`: `MatchClubEventListener` → `MatchAnnouncementService.withdrawFromOpenAnnouncements(clubId, memberId)`: borra sus entradas de convocatorias abiertas y promociona la lista de espera, con el mismo bloqueo que `withdraw`.
+
+## Fronteras entre módulos (T14)
+- Puerto `UserDirectory` en `common/domain/user`, implementado por `user` (`UserProfileService`), sustituye el SQL de `club` sobre `user_service.users`.
 
 ## Estrategia de test
-- Unitarios: jerarquía de roles.
-- Integración: unirse/salir/volver a unirse, expulsión con permisos, owner no puede salir.
+- Unitarios: `ClubRolePolicyTest` (CA-8, CA-9).
+- Integración (`club`): salir, expulsar, roles, transferencia, volver a unirse, edición (CA-6..CA-13 salvo CA-10).
+- Integración (`app`): CA-10 extremo a extremo a través de RabbitMQ (salir del club → la convocatoria promociona la espera).
+- Migraciones: `V3` en los tests de Flyway.
