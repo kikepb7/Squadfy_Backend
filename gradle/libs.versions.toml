@@ -35,6 +35,8 @@ jwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jwt" }
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 jackson-datatype = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" }
+# Jackson 3 (used by Spring MVC in Boot 4): Kotlin support for request/response bodies
+jackson3-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 
 # Kotlin
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
