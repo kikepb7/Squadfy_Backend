@@ -11,3 +11,9 @@ jwt:
 
 nginx:
   require-proxy: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

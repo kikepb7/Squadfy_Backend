@@ -6,12 +6,10 @@ import com.kikepb.squadfy.domain.exception.InvalidClubMatchScheduleException
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
 import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
-import com.kikepb.squadfy.domain.type.ClubMatchScheduleId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMatchScheduleEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubMatchScheduleModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMatchScheduleRepository
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.DateTimeException
@@ -64,7 +62,7 @@ class ClubMatchScheduleService(
 
     @Transactional
     fun updateSchedule(
-        scheduleId: ClubMatchScheduleId,
+        clubId: ClubId,
         userId: UserId,
         matchDayOfWeek: DayOfWeek?,
         matchTime: LocalTime?,
@@ -72,9 +70,9 @@ class ClubMatchScheduleService(
         format: MatchFormat?,
         isActive: Boolean?
     ): ClubMatchScheduleModel {
-        val entity = clubMatchScheduleRepository.findByIdOrNull(scheduleId)
+        clubAccessGuard.requireManager(clubId = clubId, userId = userId)
+        val entity = clubMatchScheduleRepository.findByClubId(clubId = clubId)
             ?: throw ClubMatchScheduleNotFoundException()
-        clubAccessGuard.requireManager(clubId = entity.clubId, userId = userId)
 
         matchDayOfWeek?.let { entity.matchDayOfWeek = it }
         matchTime?.let { entity.matchTime = it }

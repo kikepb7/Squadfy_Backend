@@ -33,7 +33,6 @@ fun ChatParticipantModel.toChatParticipantDto(): ChatParticipantDto {
     return ChatParticipantDto(
         userId = userId,
         username = username,
-        email = email,
         profilePictureUrl = profilePictureUrl
     )
 }

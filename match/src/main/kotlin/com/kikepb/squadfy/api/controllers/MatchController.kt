@@ -1,21 +1,24 @@
 package com.kikepb.squadfy.api.controllers
 
 import com.kikepb.squadfy.api.dto.AddMatchEventRequest
-import com.kikepb.squadfy.api.dto.CreateMatchRequest
 import com.kikepb.squadfy.api.dto.GenerateTeamsRequest
+import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.TeamBalanceDto
 import com.kikepb.squadfy.api.dto.TeamGenerationModeDto
+import com.kikepb.squadfy.api.mappers.toMatchAnnouncementDto
 import com.kikepb.squadfy.api.mappers.toMatchDto
 import com.kikepb.squadfy.api.mappers.toTeamBalanceDto
 import com.kikepb.squadfy.api.util.requestUserId
-import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.MatchEventId
 import com.kikepb.squadfy.domain.type.MatchId
+import com.kikepb.squadfy.service.MatchAnnouncementService
 import com.kikepb.squadfy.service.MatchEventService
 import com.kikepb.squadfy.service.MatchService
 import com.kikepb.squadfy.service.MatchTeamService
 import com.kikepb.squadfy.service.MatchTeamService.TeamGenerationMode
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -28,62 +31,52 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/matches")
+@RequestMapping("/api/v1/matches/{matchId}")
+@Tag(name = "Matches")
 class MatchController(
     private val matchService: MatchService,
     private val matchTeamService: MatchTeamService,
-    private val matchEventService: MatchEventService
+    private val matchEventService: MatchEventService,
+    private val matchAnnouncementService: MatchAnnouncementService
 ) {
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    fun createMatch(@Valid @RequestBody body: CreateMatchRequest): MatchDto =
-        matchService
-            .createMatch(
-                clubId = body.clubId,
-                userId = requestUserId,
-                scheduledAt = body.scheduledAt,
-                format = body.format
-            )
-            .toMatchDto()
-
-    @GetMapping("/{matchId}")
-    fun getMatchById(@PathVariable("matchId") matchId: MatchId): MatchDto =
+    @GetMapping
+    @Operation(summary = "Match with teams, score and events (members only)")
+    fun getMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
             .getMatchById(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
-    @GetMapping("/club/{clubId}")
-    fun getMatchesByClub(@PathVariable("clubId") clubId: ClubId): List<MatchDto> =
-        matchService
-            .getMatchesByClub(clubId = clubId, userId = requestUserId)
-            .map { it.toMatchDto() }
+    @GetMapping("/announcement")
+    @Operation(summary = "Announcement of the match (members only)")
+    fun getAnnouncement(@PathVariable("matchId") matchId: MatchId): MatchAnnouncementDto =
+        matchAnnouncementService
+            .getMatchAnnouncementByMatch(matchId = matchId, userId = requestUserId)
+            .toMatchAnnouncementDto()
 
-    @GetMapping("/club/{clubId}/scheduled")
-    fun getScheduledMatchesByClub(@PathVariable("clubId") clubId: ClubId): List<MatchDto> =
-        matchService
-            .getScheduledMatchesByClub(clubId = clubId, userId = requestUserId)
-            .map { it.toMatchDto() }
-
-    @DeleteMapping("/{matchId}/cancel")
+    @PostMapping("/cancel")
+    @Operation(summary = "Cancel the match and its announcement (managers only)")
     fun cancelMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
             .cancelMatch(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
-    @PostMapping("/{matchId}/complete")
+    @PostMapping("/complete")
+    @Operation(summary = "Close the match with the score of its goal events and update ratings (managers only)")
     fun completeMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
             .completeMatch(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
-    @PostMapping("/{matchId}/reopen")
+    @PostMapping("/reopen")
+    @Operation(summary = "Reopen the club's latest completed match and revert its rating changes (managers only)")
     fun reopenMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
             .reopenMatch(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
-    @PostMapping("/{matchId}/generate-teams")
+    @PostMapping("/teams")
+    @Operation(summary = "Draw balanced teams (AUTO) or set them (MANUAL); replaces current teams (managers only)")
     fun generateTeams(
         @PathVariable("matchId") matchId: MatchId,
         @Valid @RequestBody body: GenerateTeamsRequest
@@ -96,14 +89,16 @@ class MatchController(
             manualTeamB = body.manualTeamB
         ).toMatchDto()
 
-    @GetMapping("/{matchId}/team-balance")
+    @GetMapping("/team-balance")
+    @Operation(summary = "How even the teams are, with each player's rating (managers only)")
     fun getTeamBalance(@PathVariable("matchId") matchId: MatchId): TeamBalanceDto =
         matchTeamService
             .getTeamBalance(matchId = matchId, userId = requestUserId)
             .toTeamBalanceDto()
 
-    @PostMapping("/{matchId}/events")
+    @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Record a goal, assist or card of a player of the match (managers only)")
     fun addEvent(
         @PathVariable("matchId") matchId: MatchId,
         @Valid @RequestBody body: AddMatchEventRequest
@@ -116,7 +111,8 @@ class MatchController(
             minute = body.minute
         ).toMatchDto()
 
-    @DeleteMapping("/{matchId}/events/{eventId}")
+    @DeleteMapping("/events/{eventId}")
+    @Operation(summary = "Remove an event of the match (managers only)")
     fun removeEvent(
         @PathVariable("matchId") matchId: MatchId,
         @PathVariable("eventId") eventId: MatchEventId

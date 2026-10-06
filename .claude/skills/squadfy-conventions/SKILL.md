@@ -28,6 +28,12 @@ service                casos de uso @Service, @Transactional, permisos
 - Notificación asíncrona → evento `SquadfyEvent` (sealed class en `common/domain/events/<área>/`), `EventPublisher.publish`, cola + binding en `RabbitMqConfig`, `@RabbitListener` en el consumidor.
   - **Una familia de eventos nueva (paquete nuevo) debe añadirse a `setTrustedPackages` en `RabbitMqConfig`**; si no, los listeners rechazan los mensajes en silencio. Cúbrelo con un test como `app/.../EventMessagingIntegrationTest.kt`.
 
+## API REST
+- Todo endpoint bajo `/api/v1` (un test lo exige): recursos en plural y kebab-case, colecciones de un club en `/api/v1/clubs/{clubId}/...`, recurso concreto en `/api/v1/<recurso>/{id}`, acciones de dominio como `POST /{id}/<accion>`, creaciones con `201`.
+- `@Tag` por controlador y `@Operation(summary)` por endpoint (OpenAPI; Swagger UI solo en `dev`: `/swagger-ui.html`).
+- Spring MVC serializa con **Jackson 3** (`tools.jackson`); RabbitMQ y Redis usan Jackson 2. Los DTOs son `data class` sin anotaciones de Jackson.
+- Cada cambio de contrato se refleja en `docs/api/migracion-v1.md` mientras la app no esté publicada; tras publicarla, los cambios incompatibles van a `/api/v2`.
+
 ## Seguridad
 - Usuario actual: `requestUserId` (`common/api/util/RequestUserId.kt`), solo en controladores; pásalo como `userId` al servicio.
 - En el servicio, antes de cualquier efecto: `clubAccessGuard.requireMember(clubId, userId)` o `requireManager(...)` (gestor = OWNER/ADMIN). En `club`, `ensureIsClubMember` / `ensureCanManageClub`.

@@ -24,6 +24,10 @@ Todo en contenedores (incluida la aplicación):
 docker compose --profile app up --build
 ```
 
+## API
+
+Contrato REST versionado bajo `/api/v1` ([spec 007](specs/007-api-consistency/spec.md)). Con el perfil `dev`, Swagger UI en http://localhost:8080/swagger-ui.html y OpenAPI en `/v3/api-docs` (no se publican en producción). Guía para la app: [`docs/api/migracion-v1.md`](docs/api/migracion-v1.md).
+
 ## Tests
 
 ```bash

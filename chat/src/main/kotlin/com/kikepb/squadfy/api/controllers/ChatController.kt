@@ -17,12 +17,15 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/api/v1/chats")
+@Tag(name = "Chats")
 class ChatController(
     private val chatService: ChatService
 ) {
@@ -51,7 +54,8 @@ class ChatController(
         return chatService.findChatByUser(userId = requestUserId).map { it.toChatDto() }
     }
 
-    @PostMapping("/create-chat")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun createChat(@Valid @RequestBody body: CreateChatRequest): ChatDto {
         return chatService.createChat(
             creatorId = requestUserId,
@@ -59,7 +63,7 @@ class ChatController(
         ).toChatDto()
     }
 
-    @PostMapping("/{chatId}/add")
+    @PostMapping("/{chatId}/participants")
     fun addChatParticipants(@PathVariable chatId: ChatId, @Valid @RequestBody body: AddParticipantToChatDto): ChatDto {
         return chatService.addParticipantsToChat(
             requestUserId = requestUserId,
@@ -68,7 +72,7 @@ class ChatController(
         ).toChatDto()
     }
 
-    @DeleteMapping("/{chatId}/leave")
+    @DeleteMapping("/{chatId}/participants/me")
     fun leaveChat(@PathVariable chatId: ChatId) {
         chatService.removeParticipantFromChat(
             chatId = chatId,

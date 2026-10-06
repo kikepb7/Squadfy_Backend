@@ -85,6 +85,15 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
+# OpenAPI / Swagger UI: disabled by default, enabled in application-dev.yml (spec 007)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+  paths-to-match: /api/v1/**
+  default-produces-media-type: application/json
+
 management:
   endpoints:
     web:
@@ -119,6 +128,8 @@ squadfy:
       expiry-hours: 24
     reset-password:
       expiry-minutes: 30
+      # The emailed link opens this URL with ?token=...; the app then calls POST /api/v1/auth/reset-password
+      url: ${RESET_PASSWORD_URL:squadfy://reset-password}
   web-socket:
     allowed-origin: ${WEBSOCKET_ALLOWED_ORIGIN:http://localhost:8080}
 

@@ -4,6 +4,7 @@ import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
 import com.kikepb.squadfy.domain.exception.MatchNotFoundException
 import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.model.MatchModel
+import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.CANCELLED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.COMPLETED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
@@ -50,16 +51,15 @@ class MatchService(
         return toMatchModels(listOf(match)).single()
     }
 
-    fun getMatchesByClub(clubId: ClubId, userId: UserId): List<MatchModel> {
+    /** Matches of a club, newest first, optionally filtered by status. */
+    fun getMatchesByClub(clubId: ClubId, userId: UserId, status: MatchStatus? = null): List<MatchModel> {
         clubAccessGuard.requireMember(clubId = clubId, userId = userId)
-        return toMatchModels(matchRepository.findAllByClubIdOrderByScheduledAtDesc(clubId = clubId))
-    }
-
-    fun getScheduledMatchesByClub(clubId: ClubId, userId: UserId): List<MatchModel> {
-        clubAccessGuard.requireMember(clubId = clubId, userId = userId)
-        return toMatchModels(
-            matchRepository.findAllByClubIdAndStatusOrderByScheduledAtDesc(clubId = clubId, status = SCHEDULED)
-        )
+        val matches = if (status == null) {
+            matchRepository.findAllByClubIdOrderByScheduledAtDesc(clubId = clubId)
+        } else {
+            matchRepository.findAllByClubIdAndStatusOrderByScheduledAtDesc(clubId = clubId, status = status)
+        }
+        return toMatchModels(matches)
     }
 
     @Transactional

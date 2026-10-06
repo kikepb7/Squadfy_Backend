@@ -28,6 +28,12 @@ interface MatchRepository : JpaRepository<MatchEntity, MatchId> {
         to: Instant
     ): Boolean
 
+    fun findFirstByClubIdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
+        clubId: ClubId,
+        status: MatchStatus,
+        after: Instant
+    ): MatchEntity?
+
     fun findFirstByClubIdAndStatusOrderByScheduledAtDesc(clubId: ClubId, status: MatchStatus): MatchEntity?
 
     fun findFirstByClubIdAndStatusNotAndScheduledAtBeforeOrderByScheduledAtDesc(

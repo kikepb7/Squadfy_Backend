@@ -14,7 +14,7 @@ data class PlayerRatingDto(
     val totalPlayers: Int
 )
 
-/** Row of the club classification by rating. Name and photo come from GET /api/club/{clubId}/members. */
+/** Row of the club classification by rating. Name and photo come from GET /api/v1/clubs/{clubId}/members. */
 data class RatingLeaderboardEntryDto(
     val rank: Int,
     val clubMemberId: ClubMemberId,

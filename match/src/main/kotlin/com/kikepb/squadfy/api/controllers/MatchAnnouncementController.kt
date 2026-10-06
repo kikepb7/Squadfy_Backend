@@ -4,9 +4,9 @@ import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.mappers.toMatchAnnouncementDto
 import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.MatchAnnouncementId
-import com.kikepb.squadfy.domain.type.ClubId
-import com.kikepb.squadfy.domain.type.MatchId
 import com.kikepb.squadfy.service.MatchAnnouncementService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,38 +15,36 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/matchAnnouncements")
+@RequestMapping("/api/v1/announcements/{announcementId}")
+@Tag(name = "Announcements", description = "Match call-ups: enrollment and waitlist")
 class MatchAnnouncementController(
     private val matchAnnouncementService: MatchAnnouncementService
 ) {
 
-    @GetMapping("/{matchAnnouncementId}")
-    fun getMatchAnnouncementById(@PathVariable("matchAnnouncementId") matchAnnouncementId: MatchAnnouncementId): MatchAnnouncementDto =
+    @GetMapping
+    @Operation(summary = "Announcement with confirmed players and waitlist (members only)")
+    fun getAnnouncement(@PathVariable("announcementId") announcementId: MatchAnnouncementId): MatchAnnouncementDto =
         matchAnnouncementService
-            .getMatchAnnouncementById(matchAnnouncementId = matchAnnouncementId, userId = requestUserId)
+            .getMatchAnnouncementById(matchAnnouncementId = announcementId, userId = requestUserId)
             .toMatchAnnouncementDto()
 
-    @GetMapping("/match/{matchId}")
-    fun getMatchAnnouncementByMatch(@PathVariable("matchId") matchId: MatchId): MatchAnnouncementDto =
+    @PostMapping("/enrollment")
+    @Operation(
+        summary = "Enroll in the announcement",
+        description = "CONFIRMED while there are free places, WAITLISTED otherwise. Only between opensAt and closesAt (22:00 the day before)."
+    )
+    fun enroll(@PathVariable("announcementId") announcementId: MatchAnnouncementId): MatchAnnouncementDto =
         matchAnnouncementService
-            .getMatchAnnouncementByMatch(matchId = matchId, userId = requestUserId)
+            .enroll(matchAnnouncementId = announcementId, userId = requestUserId)
             .toMatchAnnouncementDto()
 
-    @GetMapping("/club/{clubId}")
-    fun getMatchAnnouncementsByClub(@PathVariable("clubId") clubId: ClubId): List<MatchAnnouncementDto> =
+    @DeleteMapping("/enrollment")
+    @Operation(
+        summary = "Withdraw from the announcement",
+        description = "If a confirmed player withdraws, the first waitlisted player takes the place. Not allowed after closesAt."
+    )
+    fun withdraw(@PathVariable("announcementId") announcementId: MatchAnnouncementId): MatchAnnouncementDto =
         matchAnnouncementService
-            .getMatchAnnouncementsByClub(clubId = clubId, userId = requestUserId)
-            .map { it.toMatchAnnouncementDto() }
-
-    @PostMapping("/{matchAnnouncementId}/enroll")
-    fun enroll(@PathVariable("matchAnnouncementId") matchAnnouncementId: MatchAnnouncementId): MatchAnnouncementDto =
-        matchAnnouncementService
-            .enroll(matchAnnouncementId = matchAnnouncementId, userId = requestUserId)
-            .toMatchAnnouncementDto()
-
-    @DeleteMapping("/{matchAnnouncementId}/withdraw")
-    fun withdraw(@PathVariable("matchAnnouncementId") matchAnnouncementId: MatchAnnouncementId): MatchAnnouncementDto =
-        matchAnnouncementService
-            .withdraw(matchAnnouncementId = matchAnnouncementId, userId = requestUserId)
+            .withdraw(matchAnnouncementId = announcementId, userId = requestUserId)
             .toMatchAnnouncementDto()
 }

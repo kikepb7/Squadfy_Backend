@@ -17,7 +17,10 @@ class EmailService(
     @param:Value("\${squadfy.email.from}")
     private val emailFrom: String,
     @param:Value("\${squadfy.email.url}")
-    private val baseUrl: String
+    private val baseUrl: String,
+    /** Screen of the app (deep link) or web page where the user types the new password. */
+    @param:Value("\${squadfy.email.reset-password.url}")
+    private val resetPasswordPageUrl: String
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -42,7 +45,7 @@ class EmailService(
         logger.info("Sending verification email for user $userId")
 
         val verificationUrl = UriComponentsBuilder
-            .fromUriString("$baseUrl/api/auth/verify")
+            .fromUriString("$baseUrl/api/v1/auth/verify")
             .queryParam("token", token)
             .build()
             .toUriString()
@@ -66,7 +69,7 @@ class EmailService(
         logger.info("Sending password reset email for user $userId")
 
         val resetPasswordUrl = UriComponentsBuilder
-            .fromUriString("$baseUrl/api/auth/reset-password")
+            .fromUriString(resetPasswordPageUrl)
             .queryParam("token", token)
             .build()
             .toUriString()

@@ -21,9 +21,12 @@ class SecurityConfig {
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/api/auth/change-password")
+                    .requestMatchers("/api/v1/auth/change-password")
                     .authenticated()
-                    .requestMatchers("/", "/api/auth/**")
+                    .requestMatchers("/", "/api/v1/auth/**")
+                    .permitAll()
+                    // API docs: only served when springdoc is enabled (dev profile), otherwise 404
+                    .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**")
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info")
                     .permitAll()

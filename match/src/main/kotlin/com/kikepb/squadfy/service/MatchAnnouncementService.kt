@@ -6,7 +6,9 @@ import com.kikepb.squadfy.domain.exception.MatchAnnouncementEntryNotFoundExcepti
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementNotFoundException
 import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel.EntryStatus.CONFIRMED
 import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel.EntryStatus.WAITLISTED
+import com.kikepb.squadfy.domain.model.CurrentMatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel
+import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel.MatchAnnouncementStatus.CANCELLED
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel.MatchAnnouncementStatus.CLOSED
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel.MatchAnnouncementStatus.OPEN
@@ -20,6 +22,7 @@ import com.kikepb.squadfy.infrastructure.database.entities.MatchAnnouncementEntr
 import com.kikepb.squadfy.infrastructure.database.mappers.toMatchAnnouncementModel
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchAnnouncementEntryRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchAnnouncementRepository
+import com.kikepb.squadfy.infrastructure.database.repositories.MatchRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,6 +33,7 @@ import java.time.Instant
 class MatchAnnouncementService(
     private val matchAnnouncementRepository: MatchAnnouncementRepository,
     private val matchAnnouncementEntryRepository: MatchAnnouncementEntryRepository,
+    private val matchRepository: MatchRepository,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -81,6 +85,25 @@ class MatchAnnouncementService(
                 entries = entriesByAnnouncement[announcement.id].orEmpty().sortedBy { it.enrolledAt }
             )
         }
+    }
+
+    /** Announcement of the club's next scheduled match with the requester's enrollment status. */
+    fun getCurrentForClub(clubId: ClubId, userId: UserId): CurrentMatchAnnouncementModel {
+        val memberId = clubAccessGuard.requireMember(clubId = clubId, userId = userId).memberId
+        val nextMatch = matchRepository.findFirstByClubIdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
+            clubId = clubId,
+            status = MatchStatus.SCHEDULED,
+            after = clock.instant()
+        ) ?: throw MatchAnnouncementNotFoundException()
+
+        val announcement = matchAnnouncementRepository.findByMatchId(matchId = requireNotNull(nextMatch.id))
+            ?: throw MatchAnnouncementNotFoundException()
+
+        return CurrentMatchAnnouncementModel.of(
+            announcement = announcement.withEntries(),
+            matchScheduledAt = nextMatch.scheduledAt,
+            memberId = memberId
+        )
     }
 
     @Transactional

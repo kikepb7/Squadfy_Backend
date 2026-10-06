@@ -3,6 +3,7 @@ package com.kikepb.squadfy.api.mappers
 import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchAnnouncementEntryDto
 import com.kikepb.squadfy.api.dto.ClubMatchScheduleDto
+import com.kikepb.squadfy.api.dto.CurrentMatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.MatchEventDto
 import com.kikepb.squadfy.api.dto.PlayerRatingDto
@@ -13,6 +14,7 @@ import com.kikepb.squadfy.api.dto.TeamStrengthDto
 import com.kikepb.squadfy.domain.model.MatchAnnouncementEntryModel
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
+import com.kikepb.squadfy.domain.model.CurrentMatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.MatchEventModel
 import com.kikepb.squadfy.domain.model.MatchEventType.ASSIST
 import com.kikepb.squadfy.domain.model.MatchEventType.GOAL
@@ -119,4 +121,11 @@ private fun TeamBalanceModel.TeamStrength.toTeamStrengthDto(): TeamStrengthDto =
     averageRating = averageRating.roundToInt(),
     totalRating = totalRating.roundToInt(),
     playerRatings = playerRatings.map { TeamPlayerRatingDto(clubMemberId = it.clubMemberId, rating = it.rating.roundToInt()) }
+)
+
+fun CurrentMatchAnnouncementModel.toCurrentMatchAnnouncementDto(): CurrentMatchAnnouncementDto = CurrentMatchAnnouncementDto(
+    announcement = announcement.toMatchAnnouncementDto(),
+    matchScheduledAt = matchScheduledAt,
+    myStatus = myStatus,
+    myWaitlistPosition = myWaitlistPosition
 )

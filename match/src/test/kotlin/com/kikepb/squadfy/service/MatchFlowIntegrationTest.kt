@@ -8,7 +8,9 @@ import com.kikepb.squadfy.domain.exception.ForbiddenException
 import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementAlreadyEnrolledException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementClosedException
+import com.kikepb.squadfy.domain.exception.MatchAnnouncementNotFoundException
 import com.kikepb.squadfy.domain.exception.NotClubMemberException
+import com.kikepb.squadfy.domain.model.CurrentMatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.MatchAnnouncementModel
 import com.kikepb.squadfy.domain.model.MatchEventType
 import com.kikepb.squadfy.domain.model.MatchFormat
@@ -113,7 +115,7 @@ class MatchFlowIntegrationTest {
             format = format
         )
 
-    private fun nextMatch(): MatchModel = matchService.getScheduledMatchesByClub(clubId = clubId, userId = owner).first()
+    private fun nextMatch(): MatchModel = matchService.getMatchesByClub(clubId = clubId, userId = owner, status = MatchStatus.SCHEDULED).first()
 
     private fun announcementOf(match: MatchModel): MatchAnnouncementModel =
         announcementService.getMatchAnnouncementByMatch(matchId = match.id, userId = owner)
@@ -175,6 +177,25 @@ class MatchFlowIntegrationTest {
         assertEquals(10, afterWithdraw.confirmedEntries.size)
         assertEquals(1, afterWithdraw.waitlistEntries.size)
         assertTrue(afterWithdraw.confirmedEntries.any { it.clubMemberId == firstWaitlisted })
+    }
+
+    @Test
+    fun `the current announcement tells each member where they stand`() {
+        assertFailsWith<MatchAnnouncementNotFoundException> { announcementService.getCurrentForClub(clubId = clubId, userId = owner) }
+
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val announcement = announcementOf(nextMatch())
+        val players = enrollPlayers(announcement, count = 12)
+
+        val confirmed = announcementService.getCurrentForClub(clubId = clubId, userId = players.first())
+        val secondWaiting = announcementService.getCurrentForClub(clubId = clubId, userId = players.last())
+        val notEnrolled = announcementService.getCurrentForClub(clubId = clubId, userId = owner)
+
+        assertEquals(CurrentMatchAnnouncementModel.MyEnrollmentStatus.CONFIRMED, confirmed.myStatus)
+        assertEquals(CurrentMatchAnnouncementModel.MyEnrollmentStatus.WAITLISTED, secondWaiting.myStatus)
+        assertEquals(2, secondWaiting.myWaitlistPosition)
+        assertEquals(CurrentMatchAnnouncementModel.MyEnrollmentStatus.NOT_ENROLLED, notEnrolled.myStatus)
+        assertEquals(madrid("2026-10-08T20:00"), notEnrolled.matchScheduledAt)
     }
 
     @Test

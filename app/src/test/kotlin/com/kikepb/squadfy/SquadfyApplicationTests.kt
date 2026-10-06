@@ -48,6 +48,6 @@ class SquadfyApplicationTests {
     fun `other actuator endpoints are not exposed and the API requires authentication`() {
         // Unauthenticated requests are rejected by security before reaching the (unexposed) endpoint.
         assertEquals(401, get("/actuator/env").statusCode())
-        assertEquals(401, get("/api/club").statusCode())
+        assertEquals(401, get("/api/v1/clubs").statusCode())
     }
 }

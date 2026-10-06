@@ -23,7 +23,6 @@ fun ClubMemberModel.toClubMemberDto(): ClubMemberDto = ClubMemberDto(
     clubId = clubId,
     userId = userId,
     username = username,
-    email = email,
     profilePictureUrl = profilePictureUrl,
     shirtNumber = shirtNumber,
     position = position,

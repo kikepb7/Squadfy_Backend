@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.concurrent.TimeUnit
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,

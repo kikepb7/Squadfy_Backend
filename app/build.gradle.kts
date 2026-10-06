@@ -24,6 +24,7 @@ dependencies {
 
 	implementation(libs.spring.boot.starter.flyway)
 	implementation(libs.spring.boot.starter.actuator)
+	implementation(libs.springdoc.openapi.webmvc.ui)
 	runtimeOnly(libs.flyway.database.postgresql)
 
 	testImplementation(libs.spring.boot.data.jpa.test)
