@@ -19,9 +19,7 @@ import com.kikepb.squadfy.infrastructure.database.mappers.toChatModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatMessageRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatParticipantRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.ChatRepository
-import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,6 +30,7 @@ class ChatService(
     private val chatRepository: ChatRepository,
     private val chatParticipantRepository: ChatParticipantRepository,
     private val chatMessageRepository: ChatMessageRepository,
+    private val chatMessagePageLoader: ChatMessagePageLoader,
     private val applicationEventPublisher: ApplicationEventPublisher
 ) {
 
@@ -122,18 +121,13 @@ class ChatService(
         )
     }
 
-    @Cacheable(
-        value = ["messages"],
-        key = "#chatId",
-        condition = "#before == null && #pageSize <= 50",
-        sync = true
-    )
-    fun getChatMessages(chatId: ChatId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
-        return chatMessageRepository
-            .findByChatIdBefore(chatId = chatId, before = before ?: Instant.now(), pageable = PageRequest.of(0, pageSize))
-            .content
-            .asReversed()
-            .map { it.toChatMessageModel().toChatMessageDto() }
+    /**
+     * Messages before [before], oldest first; only for participants of the chat. The permission
+     * check runs outside the cache: the cached page is shared by every participant of the chat.
+     */
+    fun getChatMessages(chatId: ChatId, requestUserId: UserId, before: Instant?, pageSize: Int): List<ChatMessageDto> {
+        chatRepository.findChatById(id = chatId, userId = requestUserId) ?: throw ForbiddenException()
+        return chatMessagePageLoader.loadPage(chatId = chatId, before = before, pageSize = pageSize.coerceIn(1, MAX_PAGE_SIZE))
     }
 
     private fun lastMessageForChat(chatId: ChatId): ChatMessageModel? {
@@ -158,5 +152,9 @@ class ChatService(
         return chatEntities
             .map { it.toChatModel(lastMessage = latestMessages[it.id]?.toChatMessageModel()) }
             .sortedBy { it.lastActivityAt }
+    }
+
+    private companion object {
+        const val MAX_PAGE_SIZE = 100
     }
 }

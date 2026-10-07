@@ -1,5 +1,7 @@
 package com.kikepb.squadfy
 
+import com.kikepb.squadfy.domain.events.user.UserEvent
+import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.testing.InfrastructureTestContainersConfiguration
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
@@ -28,6 +30,7 @@ import kotlin.test.assertTrue
 class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
 
     @Autowired @Qualifier("requestMappingHandlerMapping") lateinit var handlerMapping: RequestMappingHandlerMapping
+    @Autowired lateinit var eventPublisher: EventPublisher
 
     @Test
     fun `club, schedule, announcement and ratings flow through v1`() {
@@ -40,6 +43,8 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
         val club = call("POST", "/api/v1/clubs", token, """{"name":"Squadfy FC"}""")
         assertEquals(201, club.status, club.body)
         val clubId = club.json["id"].asText()
+        // Contract for the mobile app: instants are ISO-8601 strings in UTC
+        assertTrue(Regex("""\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z""").matches(club.json["createdAt"].asText()), club.body)
 
         val members = call("GET", "/api/v1/clubs/$clubId/members", token)
         assertEquals(200, members.status)
@@ -181,6 +186,31 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
 
         val refresh = call("POST", "/api/v1/auth/refresh", body = """{"refreshToken":"not-a-valid-token"}""")
         assertTrue(refresh.status in 400..499, "Expected a client error, got ${refresh.status}: ${refresh.body}")
+    }
+
+    @Test
+    fun `only chat participants can read its messages`() {
+        val (aliceId, aliceToken) = newUser()
+        val (bobId, _) = newUser()
+        val (strangerId, strangerToken) = newUser()
+        // Chat participants are created when users verify their email (UserEvent.Verified through RabbitMQ)
+        listOf(aliceId, bobId, strangerId).forEach { id ->
+            eventPublisher.publish(UserEvent.Verified(userId = id, email = "$id@squadfy.test", username = "u${id.toString().take(8)}"))
+        }
+        await().atMost(Duration.ofSeconds(15)).untilAsserted {
+            assertEquals(3, jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chat_service.chat_participants WHERE user_id IN (?, ?, ?)", Int::class.java, aliceId, bobId, strangerId
+            ))
+        }
+
+        val chat = call("POST", "/api/v1/chats", aliceToken, """{"otherUserIds":["$bobId"]}""")
+        assertEquals(201, chat.status, chat.body)
+        val chatId = chat.json["id"].asText()
+
+        // Alice's request fills the shared cache first: the stranger must still be rejected
+        assertEquals(200, call("GET", "/api/v1/chats/$chatId/messages", aliceToken).status)
+        assertEquals(403, call("GET", "/api/v1/chats/$chatId/messages", strangerToken).status)
+        assertEquals(404, call("GET", "/api/v1/chats/$chatId", strangerToken).status)
     }
 
     @Test

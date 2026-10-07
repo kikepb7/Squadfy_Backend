@@ -7,6 +7,7 @@ import com.kikepb.squadfy.api.dto.CreateChatRequest
 import com.kikepb.squadfy.api.mappers.toChatDto
 import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.ChatId
+import com.kikepb.squadfy.service.ChatMessagePageLoader
 import com.kikepb.squadfy.service.ChatService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -31,7 +32,7 @@ class ChatController(
 ) {
 
     companion object {
-        private const val DEFAULT_PAGE_SIZE = 20
+        private const val DEFAULT_PAGE_SIZE = ChatMessagePageLoader.DEFAULT_PAGE_SIZE
     }
 
     @GetMapping("/{chatId}/messages")
@@ -40,7 +41,7 @@ class ChatController(
         @RequestParam("before", required = false) before: Instant? = null,
         @RequestParam("pageSize", required = false) pageSize: Int = DEFAULT_PAGE_SIZE
     ): List<ChatMessageDto> {
-        return chatService.getChatMessages(chatId = chatId, before = before, pageSize = pageSize)
+        return chatService.getChatMessages(chatId = chatId, requestUserId = requestUserId, before = before, pageSize = pageSize)
     }
 
     @GetMapping("/{chatId}")
