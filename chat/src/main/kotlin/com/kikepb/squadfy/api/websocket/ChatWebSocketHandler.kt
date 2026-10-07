@@ -1,6 +1,6 @@
 package com.kikepb.squadfy.api.websocket
 
-import com.fasterxml.jackson.databind.JsonMappingException
+import tools.jackson.core.JacksonException
 import com.kikepb.squadfy.api.dto.websocket.*
 import com.kikepb.squadfy.api.mappers.toChatMessageDto
 import com.kikepb.squadfy.domain.event.ChatCreatedEvent
@@ -150,7 +150,7 @@ class ChatWebSocketHandler(
                 }
             }
 
-        } catch (e: JsonMappingException) {
+        } catch (e: JacksonException) {
             logger.warn("Couldn't parse message ${message.payload}", e)
             sendError(
                 session = userSession.session,
