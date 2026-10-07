@@ -14,7 +14,7 @@ docker compose up -d                                           # Postgres, Rabbi
 ```
 
 - Emails capturados: http://localhost:8025 (Mailpit) · RabbitMQ: http://localhost:15672 (guest/guest).
-- La configuración por defecto apunta a este stack. Para otro entorno copia `.env.example` a `.env` y rellénalo.
+- La configuración por defecto apunta a este stack. Para otro entorno copia `.env.example` a `.env` y rellénalo: la app lo **lee automáticamente** al arrancar desde la raíz del repo (IntelliJ o `./gradlew :app:bootRun`); las variables de entorno reales tienen prioridad.
 - Sin credenciales de Firebase, usa `FIREBASE_ENABLED=false` (las push se omiten).
 - Si un puerto está ocupado: `POSTGRES_PORT=55432 docker compose up -d` (también `RABBITMQ_PORT`, `REDIS_PORT`, `MAIL_PORT`, `APP_PORT`...). Ajusta `DB_URL` en consecuencia.
 

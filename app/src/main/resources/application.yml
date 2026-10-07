@@ -4,10 +4,16 @@ spring:
   application:
     name: squadfy
 
+  # Local development: a .env file in the working directory (repository root for IntelliJ and
+  # bootRun) is read as properties. Real environment variables take precedence. Never in Docker.
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/squadfy}
     username: ${DB_USERNAME:squadfy}
-    password: ${DB_PASSWORD:squadfy}
+    # POSTGRES_PASSWORD / MAILGUN_PASSWORD: names used before the env-based configuration
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:squadfy}}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
@@ -77,7 +83,7 @@ spring:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
     username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    password: ${MAIL_PASSWORD:${MAILGUN_PASSWORD:}}
     properties:
       mail:
         smtp:

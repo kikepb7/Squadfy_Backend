@@ -125,7 +125,7 @@ Base de datos: el esquema lo crean las migraciones **Flyway** (`app/src/main/res
 
 ## 4. Configuración (variables de entorno)
 
-Toda la infraestructura se configura por variables (plantilla en `.env.example`). Los valores por defecto apuntan al `docker compose` local. Spring no lee `.env` solo: `set -a && source .env && set +a && ./gradlew :app:bootRun`.
+Toda la infraestructura se configura por variables (plantilla en `.env.example`). Los valores por defecto apuntan al `docker compose` local. En desarrollo, un fichero `.env` en la raíz del repo se **carga automáticamente** al arrancar desde IntelliJ o con `./gradlew :app:bootRun` (las variables de entorno reales tienen prioridad; la imagen Docker nunca lo incluye). Por compatibilidad, `POSTGRES_PASSWORD` y `MAILGUN_PASSWORD` siguen aceptándose como alternativa a `DB_PASSWORD` y `MAIL_PASSWORD`.
 
 | Variable | Defecto | Uso |
 |---|---|---|
