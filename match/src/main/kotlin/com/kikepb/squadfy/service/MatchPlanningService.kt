@@ -78,11 +78,11 @@ class MatchPlanningService(
     fun planWeek(
         schedule: ClubMatchScheduleModel,
         date: LocalDate,
-        scheduledAt: Instant = regularMatchTime(schedule = schedule, date = date)
+        scheduledAt: Instant? = null
     ): MatchModel {
         val match = createMatchWithAnnouncement(
             clubId = schedule.clubId,
-            scheduledAt = scheduledAt,
+            scheduledAt = scheduledAt ?: regularMatchTime(schedule = schedule, date = date),
             maxPlayers = schedule.maxPlayers,
             durationMinutes = schedule.matchDurationMinutes,
             zone = schedule.timeZone,
@@ -94,17 +94,27 @@ class MatchPlanningService(
         return match
     }
 
+    /**
+     * Optional values are resolved inside the method, never as default-argument expressions: Kotlin evaluates those
+     * in a static `$default` bridge that receives the Spring proxy, whose injected fields are null (extra match 500).
+     */
     @Transactional
     fun createMatchWithAnnouncement(
         clubId: ClubId,
         scheduledAt: Instant,
         maxPlayers: Int,
-        durationMinutes: Int = durationFor(clubId),
-        zone: ZoneId = zoneFor(clubId),
+        durationMinutes: Int? = null,
+        zone: ZoneId? = null,
         scheduleDate: LocalDate? = null,
-        close: DeadlineRule = scheduleOf(clubId)?.close ?: DeadlineRule.DEFAULT,
-        draw: DeadlineRule = scheduleOf(clubId)?.draw ?: DeadlineRule.DEFAULT
+        close: DeadlineRule? = null,
+        draw: DeadlineRule? = null
     ): MatchModel {
+        val schedule by lazy { scheduleOf(clubId) }
+        val matchDuration = durationMinutes ?: durationFor(clubId)
+        val matchZone = zone ?: zoneFor(clubId)
+        val closeRule = close ?: schedule?.close ?: DeadlineRule.DEFAULT
+        val drawRule = draw ?: schedule?.draw ?: DeadlineRule.DEFAULT
+
         val previousMatch = matchRepository.findFirstByClubIdAndStatusNotAndScheduledAtBeforeOrderByScheduledAtDesc(
             clubId = clubId,
             status = CANCELLED,
@@ -117,17 +127,17 @@ class MatchPlanningService(
                 scheduledAt = scheduledAt,
                 status = SCHEDULED,
                 scheduleDate = scheduleDate,
-                durationMinutes = durationMinutes
+                durationMinutes = matchDuration
             )
         )
 
         val window = MatchCalendar.announcementWindow(
             matchAt = scheduledAt,
-            zone = zone,
+            zone = matchZone,
             previousMatchAt = previousMatch?.scheduledAt,
             now = clock.instant(),
-            close = close,
-            draw = draw
+            close = closeRule,
+            draw = drawRule
         )
 
         matchAnnouncementService.createMatchAnnouncement(
