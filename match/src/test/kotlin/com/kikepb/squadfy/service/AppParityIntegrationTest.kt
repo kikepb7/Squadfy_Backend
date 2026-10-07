@@ -223,20 +223,26 @@ class AppParityIntegrationTest {
         assertEquals(2, drawn.enrolledGuests.size)
         assertEquals(5, drawn.teamA.size + drawn.teamAGuests.size)
         assertEquals(5, drawn.teamB.size + drawn.teamBGuests.size)
-        assertEquals(1, drawn.teamAGuests.size) // goalkeepers first: one guest keeper, balanced by position
+        // Players with equal rating are shuffled, so the guests may end up in either team
+        assertEquals(2, drawn.teamAGuests.size + drawn.teamBGuests.size)
         val balance = teamService.getTeamBalance(matchId = match.id, userId = owner)
         assertEquals(2, (balance.teamA.playerRatings + balance.teamB.playerRatings).count { it.isGuest })
 
-        // Managers can move a guest by its guestId.
-        val guestA = drawn.teamAGuests.single().guestId
+        // Managers can move a guest by its guestId: swap one guest with a member of the other team.
+        val guestInA = drawn.teamAGuests.isNotEmpty()
+        val guestA = (if (guestInA) drawn.teamAGuests else drawn.teamBGuests).first().guestId
+        val memberB = if (guestInA) drawn.teamB.first() else drawn.teamA.first()
+        val idsA = drawn.teamA + drawn.teamAGuests.map { it.guestId }
+        val idsB = drawn.teamB + drawn.teamBGuests.map { it.guestId }
         val swapped = teamService.generateTeams(
             matchId = match.id,
             userId = owner,
             mode = TeamGenerationMode.MANUAL,
-            manualTeamA = drawn.teamB + drawn.teamBGuests.map { it.guestId },
-            manualTeamB = drawn.teamA + guestA
+            manualTeamA = if (guestInA) idsA - guestA + memberB else idsA - memberB + guestA,
+            manualTeamB = if (guestInA) idsB - memberB + guestA else idsB - guestA + memberB
         )
-        assertEquals(guestA, swapped.teamBGuests.single().guestId)
+        val movedTo = if (guestInA) swapped.teamBGuests else swapped.teamAGuests
+        assertTrue(movedTo.any { it.guestId == guestA })
 
         eventService.addEvent(match.id, owner, swapped.teamA.first(), MatchEventType.GOAL, null)
         clock.now = madrid("2026-10-08T21:30")
