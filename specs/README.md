@@ -30,5 +30,6 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [007](007-api-consistency/spec.md) | API coherente y documentada (v1) | Hecha — falta migrar la app ([guía](../docs/api/migracion-v1.md)) | Sí (app móvil) |
 | [008](008-app-parity/spec.md) | Invitados, excepciones, cierre/sorteo configurables, marcador manual | ✅ Implementada | Sí (paridad con la app) |
 | [009](009-app-config/spec.md) | App config: verificación de email desactivable (pruebas) | Hecha | — |
+| [010](010-account-deletion-rate-limits/spec.md) | Borrado de cuenta (app + web) y rate limit por cuenta | Hecha | Sí (publicación en tiendas) |
 
 Análisis inicial del repositorio: [`docs/analysis/2026-10-05-analisis-repositorio.md`](../docs/analysis/2026-10-05-analisis-repositorio.md).

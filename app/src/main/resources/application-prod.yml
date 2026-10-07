@@ -6,5 +6,4 @@ squadfy:
     email-verification:
       enabled: true
   rate-limit:
-    ip:
-      apply-limit: ${RATE_LIMIT_ENABLED:true}
+    enabled: ${RATE_LIMIT_ENABLED:true}

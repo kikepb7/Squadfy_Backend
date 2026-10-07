@@ -8,6 +8,8 @@ import java.util.UUID
 
 interface ClubNotificationSettingRepository : JpaRepository<ClubNotificationSettingEntity, UUID> {
 
+    fun deleteAllByUserId(userId: UserId)
+
     fun findByUserIdAndClubId(userId: UserId, clubId: ClubId): ClubNotificationSettingEntity?
 
     fun findAllByClubIdAndMutedIsTrueAndUserIdIn(clubId: ClubId, userIds: Collection<UserId>): List<ClubNotificationSettingEntity>

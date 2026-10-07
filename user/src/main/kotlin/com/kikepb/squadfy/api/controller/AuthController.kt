@@ -9,7 +9,11 @@ import com.kikepb.squadfy.service.auth.EmailVerificationService
 import com.kikepb.squadfy.service.auth.PasswordResetService
 import jakarta.validation.Valid
 import com.kikepb.squadfy.api.config.IpRateLimit
+import com.kikepb.squadfy.api.config.AuthRateLimits
 import com.kikepb.squadfy.api.util.requestUserId
+import com.kikepb.squadfy.service.account.AccountDeletionService
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import java.util.concurrent.TimeUnit
 
@@ -19,15 +23,13 @@ class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
     private val passwordResetService: PasswordResetService,
-    private val emailRateLimiter: EmailRateLimiter
+    private val emailRateLimiter: EmailRateLimiter,
+    private val authRateLimits: AuthRateLimits,
+    private val accountDeletionService: AccountDeletionService
 ) {
 
     @PostMapping("/register")
-    @IpRateLimit(
-        requests = 10,
-        duration = 1L,
-        unit = TimeUnit.HOURS
-    )
+    @IpRateLimit(requests = AuthRateLimits.REGISTER_PER_IP, duration = 1L, unit = TimeUnit.HOURS)
     fun register(@Valid @RequestBody body: RegisterRequest): UserDto {
         return authService.register(
             email = body.email,
@@ -37,12 +39,9 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    @IpRateLimit(
-        requests = 10,
-        duration = 1L,
-        unit = TimeUnit.HOURS
-    )
+    @IpRateLimit(requests = AuthRateLimits.LOGIN_REFRESH_PER_IP, duration = 1L, unit = TimeUnit.HOURS)
     fun login(@RequestBody body: LoginRequest): AuthenticatedUserDto {
+        authRateLimits.login(email = body.email)
         return authService.login(
             email = body.email,
             password = body.password
@@ -50,15 +49,21 @@ class AuthController(
     }
 
     @PostMapping("/refresh")
-    @IpRateLimit(
-        requests = 10,
-        duration = 1L,
-        unit = TimeUnit.HOURS
-    )
-    fun refresh(@RequestBody body: RefreshRequest): AuthenticatedUserDto {
+    @IpRateLimit(requests = AuthRateLimits.LOGIN_REFRESH_PER_IP, duration = 1L, unit = TimeUnit.HOURS)
+    fun refresh(@RequestBody body: RefreshRequest, request: HttpServletRequest): AuthenticatedUserDto {
+        authRateLimits.refresh(refreshToken = body.refreshToken, request = request)
         return authService.refresh(
             refreshToken = body.refreshToken
         ).toAuthenticatedUserDto()
+    }
+
+    /** Account deletion from the web page `/account/delete` (spec 010 RN-A1, required by Google Play). */
+    @PostMapping("/delete-account")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @IpRateLimit(requests = AuthRateLimits.WEB_DELETE_PER_IP, duration = 1L, unit = TimeUnit.HOURS)
+    fun deleteAccount(@Valid @RequestBody body: DeleteAccountWithCredentialsRequest) {
+        authRateLimits.deleteAccount(email = body.email)
+        accountDeletionService.deleteAccountWithCredentials(email = body.email, password = body.password)
     }
 
     @PostMapping("/logout")

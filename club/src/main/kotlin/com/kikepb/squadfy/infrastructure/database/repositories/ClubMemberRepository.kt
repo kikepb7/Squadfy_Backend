@@ -27,6 +27,11 @@ interface ClubMemberRepository : JpaRepository<ClubMemberEntity, ClubMemberId> {
 
     fun findAllByClubIdAndBannedAtIsNotNullOrderByBannedAtDesc(clubId: ClubId): List<ClubMemberEntity>
 
+    /** Every membership of a user, active or not (spec 010: account deletion). */
+    fun findAllByUserId(userId: UserId): List<ClubMemberEntity>
+
+    fun deleteAllByClubId(clubId: ClubId)
+
     /** Any membership, active or not: used to reactivate a former member (spec 001 RN-12). */
     fun findByClubIdAndUserId(clubId: ClubId, userId: UserId): ClubMemberEntity?
 

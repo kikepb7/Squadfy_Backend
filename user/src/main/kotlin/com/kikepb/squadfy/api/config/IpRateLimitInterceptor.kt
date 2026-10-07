@@ -1,47 +1,34 @@
 package com.kikepb.squadfy.api.config
 
-import com.kikepb.squadfy.domain.exception.RateLimitException
-import com.kikepb.squadfy.infrastructure.rate_limiting.IpRateLimiter
 import com.kikepb.squadfy.infrastructure.rate_limiting.IpResolver
+import com.kikepb.squadfy.infrastructure.rate_limiting.RateLimiter
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.web.method.HandlerMethod
 import org.springframework.web.servlet.HandlerInterceptor
 import java.time.Duration
 
+/**
+ * Per-IP safety net of the endpoints annotated with [IpRateLimit]; each endpoint has its own counter.
+ * A [com.kikepb.squadfy.domain.exception.RateLimitException] becomes a 429 in the exception handler.
+ */
 @Component
 class IpRateLimitInterceptor(
-    private val ipRateLimiter: IpRateLimiter,
-    private val ipResolver: IpResolver,
-    @param:Value("\${squadfy.rate-limit.ip.apply-limit}")
-    private val applyLimit: Boolean
-): HandlerInterceptor {
+    private val rateLimiter: RateLimiter,
+    private val ipResolver: IpResolver
+) : HandlerInterceptor {
 
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        if(handler is HandlerMethod && applyLimit) {
-            val annotation = handler.getMethodAnnotation(IpRateLimit::class.java)
-            if(annotation != null) {
-                val clientIp = ipResolver.getClientIp(request)
+        if (!rateLimiter.enabled) return true
+        val annotation = (handler as? HandlerMethod)?.getMethodAnnotation(IpRateLimit::class.java) ?: return true
 
-                return try {
-                    ipRateLimiter.withIpRateLimit(
-                        ipAddress = clientIp,
-                        resetsIn = Duration.of(
-                            annotation.duration,
-                            annotation.unit.toChronoUnit()
-                        ),
-                        maxRequestsPerIp = annotation.requests,
-                        action = { true }
-                    )
-                } catch(e: RateLimitException) {
-                    response.sendError(429)
-                    false
-                }
-            }
-        }
-
+        rateLimiter.check(
+            scope = "ip:${handler.method.name}",
+            id = ipResolver.getClientIp(request),
+            maxRequests = annotation.requests,
+            window = Duration.of(annotation.duration, annotation.unit.toChronoUnit())
+        )
         return true
     }
 }

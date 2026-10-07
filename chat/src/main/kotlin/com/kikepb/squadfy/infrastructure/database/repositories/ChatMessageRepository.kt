@@ -2,10 +2,12 @@ package com.kikepb.squadfy.infrastructure.database.repositories
 
 import com.kikepb.squadfy.domain.type.ChatId
 import com.kikepb.squadfy.domain.type.ChatMessageId
+import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.ChatMessageEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import java.time.Instant
 
@@ -34,4 +36,15 @@ interface ChatMessageRepository: JpaRepository<ChatMessageEntity, ChatMessageId>
         )
     """)
     fun findLatestMessagesByChatIds(chatIds: Set<ChatId>): List<ChatMessageEntity>
+
+    @Query("SELECT DISTINCT m.chatId FROM ChatMessageEntity m WHERE m.sender.userId = :userId")
+    fun findChatIdsWithMessagesFrom(userId: UserId): List<ChatId>
+
+    @Modifying
+    @Query("DELETE FROM ChatMessageEntity m WHERE m.sender.userId = :userId")
+    fun deleteAllBySender(userId: UserId): Int
+
+    @Modifying
+    @Query("DELETE FROM ChatMessageEntity m WHERE m.chatId = :chatId")
+    fun deleteAllByChatIdInBulk(chatId: ChatId): Int
 }

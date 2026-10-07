@@ -36,6 +36,9 @@ class ClubMembershipQueryService(
     override fun findClubName(clubId: ClubId): String? =
         clubRepository.findByIdOrNull(clubId)?.name
 
+    override fun findMemberIdsOfUser(userId: UserId): List<ClubMemberId> =
+        clubMemberRepository.findAllByUserId(userId = userId).map { requireNotNull(it.id) }
+
     private fun ClubMemberEntity.toSnapshot(): ClubMembershipSnapshot =
         ClubMembershipSnapshot(
             memberId = requireNotNull(id),

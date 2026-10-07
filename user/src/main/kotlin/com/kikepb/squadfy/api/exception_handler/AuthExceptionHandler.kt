@@ -1,6 +1,7 @@
 package com.kikepb.squadfy.api.exception_handler
 
 import com.kikepb.squadfy.domain.exception.*
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -53,12 +54,13 @@ class AuthExceptionHandler {
         "message" to e.message
     )
 
+    /** Spec 010 RN-B2: 429 with the seconds to wait in `Retry-After`. */
     @ExceptionHandler(RateLimitException::class)
-    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    fun onRateLimitExceeded(e: RateLimitException) = mapOf(
-        "code" to "RATE_LIMIT_EXCEEDED",
-        "message" to e.message
-    )
+    fun onRateLimitExceeded(e: RateLimitException): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity
+            .status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, e.resetInSeconds.toString())
+            .body(mapOf("code" to "RATE_LIMIT_EXCEEDED", "message" to e.message))
 
     @ExceptionHandler(UnauthorizedException::class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)

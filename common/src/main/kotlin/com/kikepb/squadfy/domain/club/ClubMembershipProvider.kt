@@ -17,4 +17,7 @@ interface ClubMembershipProvider {
     fun findAllMembers(clubId: ClubId): List<ClubMembershipSnapshot>
 
     fun findClubName(clubId: ClubId): String?
+
+    /** Every membership of the user in any club, active or not (spec 010: data erasure). */
+    fun findMemberIdsOfUser(userId: UserId): List<ClubMemberId>
 }

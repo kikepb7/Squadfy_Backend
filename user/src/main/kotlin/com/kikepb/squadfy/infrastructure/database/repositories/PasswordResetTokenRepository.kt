@@ -10,6 +10,7 @@ import java.time.Instant
 interface PasswordResetTokenRepository: JpaRepository<PasswordResetTokenEntity, Long> {
     fun findByToken(token: String): PasswordResetTokenEntity?
     fun deleteByExpiresAtLessThan(now: Instant)
+    fun deleteAllByUser(user: UserEntity)
 
     @Modifying
     @Query("""

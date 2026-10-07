@@ -142,6 +142,10 @@ class RabbitMqConfig {
         BindingBuilder.bind(matchClubEventQueue).to(clubExchange).with(ClubEventConstants.CLUB_MEMBER_KICKED)
 
     @Bean
+    fun matchClubDeletedBinding(matchClubEventQueue: Queue, clubExchange: TopicExchange): Binding =
+        BindingBuilder.bind(matchClubEventQueue).to(clubExchange).with(ClubEventConstants.CLUB_DELETED)
+
+    @Bean
     fun notificationUserEventQueue() = Queue(
         MessageQueues.NOTIFICATION_USER_EVENTS,
         true

@@ -43,6 +43,12 @@ sealed class ClubEvent(
         override val eventKey: String = ClubEventConstants.CLUB_MEMBER_LEFT
     ) : ClubEvent(), SquadfyEvent
 
+    /** The club no longer exists: its last member deleted their account (spec 010 RN-A6). */
+    data class ClubDeleted(
+        val clubId: ClubId,
+        override val eventKey: String = ClubEventConstants.CLUB_DELETED
+    ) : ClubEvent(), SquadfyEvent
+
     data class JoinRequestReceived(
         val clubId: ClubId,
         val clubName: String,

@@ -44,6 +44,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Área | Estado |
 |---|---|
 | Autenticación (registro, verificación por email, login, refresh, reset/cambio de contraseña) | ✅ |
+| Borrado de cuenta desde la app y desde la web (`/account/delete`), rate limit por cuenta (spec 010) | ✅ |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
 | Sorteo equilibrado automático a la hora del sorteo + rectificación manual | ✅ |
@@ -56,7 +57,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Docker, Flyway, CI (GitHub Actions), health checks | ✅ |
 | **Despliegue** (elegir hosting, registro de imágenes, CD) | ⏳ pendiente |
 
-Calidad: `./gradlew build` ejecuta ~118 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
+Calidad: `./gradlew build` ejecuta ~130 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
 
 ---
 
@@ -146,7 +147,7 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 | `FIREBASE_ENABLED` | `true` | `false` = no se envían push (útil en local) |
 | `FIREBASE_CREDENTIALS_PATH` | `classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json` | Service account (en Docker: `file:/run/secrets/...`) |
 | `FIREBASE_ANDROID_PACKAGE` | vacío | Si se define, solo ese `applicationId` de Android recibe push |
-| `RATE_LIMIT_ENABLED` | `false` (`true` en `prod`) | Límite por IP en endpoints de auth |
+| `RATE_LIMIT_ENABLED` | `false` (`true` en `prod`) | Límites por cuenta y por IP de los endpoints de auth (spec 010) |
 | `NGINX_REQUIRE_PROXY` | `true` (`false` en `dev`) | Exigir IP real vía proxy de confianza |
 | `DB_POOL_SIZE` | `10` | Conexiones a la BD |
 
@@ -164,7 +165,7 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 - **Nulos**: los campos opcionales se envían como `null` (no se omiten).
 - **Enumerados**: por nombre (`"FIVE_A_SIDE"`, `"THURSDAY"`). Recomendado tolerar valores desconocidos en el cliente.
 - **Mapas**: `minutesPlayed` es un objeto `{ "<clubMemberId>": minutos }`.
-- **Códigos de estado**: `200` OK, `201` creación (`clubs`, `schedule`, `matches`, `chats`, `devices`, `events`), `204` sin contenido (salir, expulsar, vetar), `400` petición o regla inválida, `401` sin token o token inválido, `403` sin permiso, `404` no encontrado, `409` conflicto, `429` límite de peticiones.
+- **Códigos de estado**: `200` OK, `201` creación (`clubs`, `schedule`, `matches`, `chats`, `devices`, `events`), `204` sin contenido (salir, expulsar, vetar, borrar cuenta), `400` petición o regla inválida, `401` sin token o token inválido, `403` sin permiso, `404` no encontrado, `409` conflicto, `429` límite de peticiones.
 - **Errores**: `{ "code": "...", "message": "..." }`; validación `{ "code": "VALIDATION_ERROR", "errors": ["..."] }`. Un `401` por falta de token **no tiene cuerpo**. Ver [§11](#11-errores).
 - **Paginación**: solo en mensajes de chat (`before` + `pageSize`). El resto de listados son completos (tamaños de club pequeños).
 
@@ -185,10 +186,26 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 5. **Olvidé la contraseña**: `POST /auth/forgot-password {email}` (responde 200 aunque el email no exista). El email abre `RESET_PASSWORD_URL?token=...` (por defecto el deep link **`squadfy://reset-password?token=...`**, 30 min de validez). La app captura el deep link, pide la nueva contraseña y llama `POST /auth/reset-password {token, newPassword}`.
 6. **Cambiar contraseña** (con sesión): `POST /auth/change-password {oldPassword, newPassword}`. Antigua incorrecta → 401 `INVALID_CREDENTIALS`; igual a la nueva → 409 `SAME_PASSWORD`.
 7. **Mi perfil**: `GET /me` → `UserDto` (incluye el email; es el único sitio donde se expone).
+8. **Borrar mi cuenta** (spec 010; obligatorio en App Store y Google Play):
+   - Desde la app: `DELETE /me {password}` → **204**. Contraseña incorrecta → 401 `INVALID_CREDENTIALS`. Tras el 204, borrar los tokens locales y volver al inicio.
+   - Desde la web (sin la app): **`/account/delete`**, página pública con formulario (email + contraseña + confirmación) que llama a `POST /auth/delete-account {email, password}`. **Esta es la URL que hay que dar a Google Play** (`https://<dominio>/account/delete`).
+   - Es **inmediato e irreversible**: se borran email, nombre, contraseña, foto, sesiones (también los access tokens ya emitidos, que pasan a dar 401), dispositivos, preferencias de notificación, ausencias y todos sus mensajes. El email y el nombre de usuario quedan libres.
+   - Se **conserva anonimizado** su historial de club («Usuario eliminado …») para que marcadores y estadísticas de los demás cuadren. Sale de todos sus clubes (y de las convocatorias abiertas, con sus invitados) y de todos sus chats.
+   - Clubes de los que era **OWNER**: pasan al ADMIN activo más antiguo o, si no hay, al miembro activo más antiguo. Si era el único miembro, el club se elimina con todos sus datos.
 
 ### Validaciones
 - `email` válido; `username` 3–20 caracteres (único); `password` ≥ 8 caracteres con al menos un dígito o carácter especial.
-- **Rate limiting** (si `RATE_LIMIT_ENABLED`, activo en `prod`): 10 peticiones/hora por IP en `register`, `login`, `refresh`, `resend-verification` y `forgot-password` → **429 `RATE_LIMIT_EXCEEDED`**; además el reenvío de verificación está limitado por email.
+- **Rate limiting** (si `RATE_LIMIT_ENABLED`, activo en `prod`; spec 010). Los límites son **por cuenta**, así que varios jugadores en el mismo wifi no se bloquean entre sí; el límite por IP es solo una red de seguridad:
+
+  | Operación | Por cuenta | Por IP |
+  |---|---|---|
+  | `refresh` | 60/h por usuario del token | 300/h; tokens inválidos o caducados 30/h |
+  | `login` | 10/h por email | 300/h |
+  | `register` | — | 50/h |
+  | `DELETE /me` · `POST /auth/delete-account` | 5/h por usuario · por email | — · 50/h |
+  | `resend-verification` · `forgot-password` | por email | 10/h |
+
+  Al superarlo → **429 `RATE_LIMIT_EXCEEDED`** con la cabecera **`Retry-After`** (segundos). La app debe esperar ese tiempo y no reintentar en bucle.
 
 ---
 
@@ -272,7 +289,9 @@ Permisos: **público** (sin token), **auth** (cualquier usuario autenticado), **
 | POST | `/auth/forgot-password` | público | `{email}` | 200 vacío |
 | POST | `/auth/reset-password` | público | `{token, newPassword}` | 200 vacío |
 | POST | `/auth/change-password` | auth | `{oldPassword, newPassword}` | 200 vacío |
+| POST | `/auth/delete-account` | público | `{email, password}` | **204** (formulario web de borrado) |
 | GET | `/me` | auth | — | `UserDto` (con email) |
+| DELETE | `/me` | auth | `{password}` | **204** (borra la cuenta) |
 | GET | `/users?query=` | auth | — | `ChatParticipantDto` (búsqueda exacta por username o email; 404 si no existe) |
 | GET | `/users/{userId}` | auth | — | `ChatParticipantDto` (perfil público: nombre y foto) |
 | POST | `/me/profile-picture/upload-url?mimeType=` | auth | — | `PictureUploadResponse` |
@@ -545,7 +564,7 @@ Formato: `{ "code": "...", "message": "..." }`. El `message` está en inglés y 
 | 409 | `CONFLICT` | Ya apuntado, ya miembro, club lleno, horario ya existe, estado del partido no permite la acción, owner que intenta salir, datos duplicados |
 | 409 | `USER_EXITS` | Registro con email o username ya usados (sic, ver §16) |
 | 409 | `SAME_PASSWORD` | La nueva contraseña es igual a la anterior |
-| 429 | `RATE_LIMIT_EXCEEDED` | Demasiadas peticiones de auth desde la IP o el email |
+| 429 | `RATE_LIMIT_EXCEEDED` | Demasiadas peticiones de auth para esa cuenta (o IP); cabecera `Retry-After` |
 | 500 | `STORAGE_ERROR` | Fallo subiendo/borrando en Supabase Storage |
 
 ---
@@ -638,7 +657,7 @@ Apertura y recordatorio se envían **una sola vez** por convocatoria. Silenciar 
 | Clasificaciones | `GET /clubs/{id}/ratings`, `/ratings/me`, `GET /clubs/{id}/stats?sortBy=…`, `/stats/me` (cruzar `clubMemberId` con miembros) |
 | Ajustes del club | `GET/PUT /clubs/{id}/notification-settings`; gestores: `PATCH /clubs/{id}`, logo, regenerar código |
 | Chat | `GET /chats`, `GET /chats/{id}/messages?before=` para scroll hacia atrás, WebSocket para enviar/recibir, `GET /users?query=` para buscar a quién escribir |
-| Perfil | `GET /me`, `GET /users/{myId}` (foto), flujo de foto (`upload-url` → subir → `PUT /me/profile-picture`) |
+| Perfil | `GET /me`, `GET /users/{myId}` (foto), flujo de foto (`upload-url` → subir → `PUT /me/profile-picture`), **borrar cuenta** (`DELETE /me {password}` tras pedir la contraseña y confirmar) |
 
 ### Actualización de datos
 - Convocatorias, equipos y partidos **no llegan por WebSocket**: refrescar al abrir la pantalla, con *pull-to-refresh* y **al recibir una push** del tipo correspondiente (usar `clubId`/`matchId` de `data` para navegar y recargar).
@@ -664,6 +683,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 9. **Reset de contraseña** vía deep link `squadfy://reset-password?token=`.
 10. **Push de chat**: el título es ahora el nombre del remitente.
 11. **Spec 008 (paridad con la app)**: invitados en la convocatoria (entradas con `participantType`), excepciones del calendario, ausencias, `closeTime`/`drawTime` configurables (`drawAt` en la convocatoria), marcador manual oficial y `ratingChanges` por partido. **Se retira la valoración manual** (el nivel es el rating automático). La foto por club queda en backlog.
+12. **Spec 010**: borrado de cuenta (`DELETE /me {password}` y página web `/account/delete`) y rate limit por cuenta con `Retry-After`.
 
 ---
 
@@ -673,7 +693,6 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 |---|---|
 | Despliegue | Falta elegir hosting; la imagen Docker y la CI están listas. Servicios gestionados: Supabase (PostgreSQL + Storage), CloudAMQP, Redis Cloud, Mailgun, Firebase |
 | Código `USER_EXITS` | Errata histórica de `USER_EXISTS`; se mantiene por compatibilidad hasta acordar el cambio |
-| Rate limit de `refresh` | 10/h por IP en producción; con access tokens de 15 min y varias personas tras la misma IP (wifi del club) podría limitarse. Revisar al desplegar |
 | Verificación de email | El enlace abre `GET /api/v1/auth/verify` en el navegador y responde 200 vacío (sin página de confirmación) |
 | Tiempo real | Convocatorias y partidos no se emiten por WebSocket; la app refresca al abrir o al recibir push |
 | Dispositivos | `DELETE /devices/{token}` no comprueba que el token sea del usuario (riesgo bajo: hay que conocer el token FCM) |

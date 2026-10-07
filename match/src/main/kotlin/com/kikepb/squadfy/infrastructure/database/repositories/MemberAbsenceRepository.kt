@@ -9,6 +9,8 @@ import java.util.UUID
 
 interface MemberAbsenceRepository : JpaRepository<MemberAbsenceEntity, UUID> {
 
+    fun deleteAllByClubMemberIdIn(clubMemberIds: Collection<ClubMemberId>)
+
     fun findAllByClubIdOrderByFromDateAsc(clubId: ClubId): List<MemberAbsenceEntity>
 
     /** Absences overlapping [from, to]. */

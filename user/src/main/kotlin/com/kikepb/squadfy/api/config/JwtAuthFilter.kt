@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.api.config
 
+import com.kikepb.squadfy.infrastructure.security.AccessTokenRevocation
 import com.kikepb.squadfy.service.JwtService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -12,7 +13,8 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 @Component
 class JwtAuthFilter(
-    private val jwtService: JwtService
+    private val jwtService: JwtService,
+    private val accessTokenRevocation: AccessTokenRevocation
 ): OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -24,9 +26,10 @@ class JwtAuthFilter(
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             if (jwtService.validateAccessToken(token = authHeader)) {
                 val userId = jwtService.getUserIdFromToken(token = authHeader)
-                val auth = UsernamePasswordAuthenticationToken(userId, null, emptyList())
-
-                SecurityContextHolder.getContext().authentication = auth
+                // Spec 010 RN-A4: tokens of a deleted account stop working before they expire
+                if (!accessTokenRevocation.isRevoked(userId = userId)) {
+                    SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken(userId, null, emptyList())
+                }
             }
         }
         filterChain.doFilter(request, response)

@@ -34,4 +34,12 @@ interface ChatRepository: JpaRepository<ChatEntity, ChatId> {
         )
     """)
     fun findAllByUserId(userId: UserId): List<ChatEntity>
+
+    @Query("""
+        SELECT c
+        FROM ChatEntity c
+        LEFT JOIN FETCH c.participants
+        WHERE c.creator.userId = :userId
+    """)
+    fun findAllCreatedBy(userId: UserId): List<ChatEntity>
 }

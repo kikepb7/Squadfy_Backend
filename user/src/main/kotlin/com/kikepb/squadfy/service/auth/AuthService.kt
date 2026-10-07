@@ -107,8 +107,9 @@ class AuthService(
         }
 
         val userId = jwtService.getUserIdFromToken(token = refreshToken)
+        // Spec 010 RN-A4: the session of a deleted account is just invalid
         val user = userRepository.findByIdOrNull(id = userId)
-            ?: throw UserNotFoundException()
+            ?: throw InvalidTokenException(message = "Invalid refresh token")
 
         val hashed = hashToken(token = refreshToken)
 

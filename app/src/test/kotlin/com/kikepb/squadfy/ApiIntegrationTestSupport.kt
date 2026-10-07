@@ -21,7 +21,9 @@ abstract class ApiIntegrationTestSupport {
 
     private val http = HttpClient.newHttpClient()
 
-    protected data class ApiResponse(val status: Int, val body: String) {
+    protected data class ApiResponse(val status: Int, val body: String, val headers: Map<String, List<String>> = emptyMap()) {
+        fun header(name: String): String? = headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.firstOrNull()
+
         val json: JsonNode get() = ObjectMapper().readTree(body)
     }
 
@@ -32,7 +34,7 @@ abstract class ApiIntegrationTestSupport {
             .apply { token?.let { header("Authorization", "Bearer $it") } }
             .build()
         val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-        return ApiResponse(response.statusCode(), response.body())
+        return ApiResponse(response.statusCode(), response.body(), response.headers().map())
     }
 
     /** A verified user inserted directly in the database, with a valid access token. */
@@ -47,6 +49,30 @@ abstract class ApiIntegrationTestSupport {
             userId, "$name@squadfy.test", name
         )
         return userId to jwtService.generateAccessToken(userId)
+    }
+
+    /**
+     * A user registered and logged in through the API, so every module knows them (needs email
+     * verification disabled). Returns (userId, email, tokens of the login).
+     */
+    protected fun registerUser(password: String = TEST_PASSWORD): RegisteredUser {
+        val name = "r${UUID.randomUUID().toString().take(10)}"
+        val email = "$name@squadfy.test"
+        val registered = call("POST", "/api/v1/auth/register", body = """{"email":"$email","username":"$name","password":"$password"}""")
+        check(registered.status == 200) { "Register failed: ${registered.status} ${registered.body}" }
+        val login = call("POST", "/api/v1/auth/login", body = """{"email":"$email","password":"$password"}""").json
+        return RegisteredUser(
+            userId = UUID.fromString(registered.json["id"].asText()),
+            email = email,
+            accessToken = login["accessToken"].asText(),
+            refreshToken = login["refreshToken"].asText()
+        )
+    }
+
+    protected data class RegisteredUser(val userId: UUID, val email: String, val accessToken: String, val refreshToken: String)
+
+    protected companion object {
+        const val TEST_PASSWORD = "Squadfy2026!"
     }
 
     /** Creates a club owned by a new user; returns (clubId, invitationCode, ownerToken). */

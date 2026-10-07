@@ -535,4 +535,7 @@ class FakeClubMembershipProvider : ClubMembershipProvider {
         members.filter { it.clubId == clubId }
 
     override fun findClubName(clubId: ClubId): String? = "Test FC"
+
+    override fun findMemberIdsOfUser(userId: UserId): List<ClubMemberId> =
+        members.filter { it.userId == userId }.map { it.memberId }
 }

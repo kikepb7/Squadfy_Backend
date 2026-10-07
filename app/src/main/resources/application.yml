@@ -130,8 +130,8 @@ squadfy:
       # Require verifying the email before logging in. Set EMAIL_VERIFICATION_ENABLED=false only for local/QA tests.
       enabled: ${EMAIL_VERIFICATION_ENABLED:true}
   rate-limit:
-    ip:
-      apply-limit: ${RATE_LIMIT_ENABLED:false}
+    # Spec 010 RN-B3: per-account and per-IP limits of the auth endpoints (on in prod)
+    enabled: ${RATE_LIMIT_ENABLED:false}
   email:
     from: ${MAIL_FROM:no-reply@squadfy.local}
     url: ${APP_PUBLIC_URL:http://localhost:8080}
