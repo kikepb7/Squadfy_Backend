@@ -1,6 +1,7 @@
 package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
+import com.kikepb.squadfy.domain.exception.InvalidPlayerMinutesException
 import com.kikepb.squadfy.domain.exception.MatchNotFoundException
 import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.model.MatchModel
@@ -9,6 +10,7 @@ import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.CANCELLED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.COMPLETED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
 import com.kikepb.squadfy.domain.type.ClubId
+import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
@@ -36,12 +38,13 @@ class MatchService(
 ) {
 
     @Transactional
-    fun createMatch(clubId: ClubId, userId: UserId, scheduledAt: Instant, format: MatchFormat?): MatchModel {
+    fun createMatch(clubId: ClubId, userId: UserId, scheduledAt: Instant, format: MatchFormat?, durationMinutes: Int? = null): MatchModel {
         clubAccessGuard.requireManager(clubId = clubId, userId = userId)
         val match = matchPlanningService.createMatchWithAnnouncement(
             clubId = clubId,
             scheduledAt = scheduledAt,
-            maxPlayers = (format ?: matchPlanningService.formatFor(clubId = clubId)).maxPlayers
+            maxPlayers = (format ?: matchPlanningService.formatFor(clubId = clubId)).maxPlayers,
+            durationMinutes = durationMinutes ?: matchPlanningService.durationFor(clubId = clubId)
         )
         return loadMatch(matchId = match.id)
     }
@@ -115,6 +118,25 @@ class MatchService(
         playerRatingService.revertMatch(clubId = match.clubId, matchId = matchId)
         match.status = SCHEDULED
         matchRepository.saveAndFlush(match)
+        return loadMatch(matchId = matchId)
+    }
+
+    /** Minutes a player actually played (spec 004 RN-6); only before the match is completed. */
+    @Transactional
+    fun setPlayerMinutes(matchId: MatchId, userId: UserId, clubMemberId: ClubMemberId, minutes: Int): MatchModel {
+        val match = findMatchEntity(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        if (match.status != SCHEDULED) {
+            throw InvalidMatchStateException("Minutes can only be changed on scheduled matches (reopen a completed match first)")
+        }
+        if (minutes !in 0..match.durationMinutes) {
+            throw InvalidPlayerMinutesException("Minutes must be between 0 and ${match.durationMinutes}")
+        }
+        val player = matchTeamPlayerRepository.findAllByMatchId(matchId = matchId).firstOrNull { it.clubMemberId == clubMemberId }
+            ?: throw InvalidPlayerMinutesException("The player is not assigned to any team in this match")
+
+        player.minutesPlayed = minutes
+        matchTeamPlayerRepository.saveAndFlush(player)
         return loadMatch(matchId = matchId)
     }
 

@@ -66,6 +66,13 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
         assertEquals("CONFIRMED", call("GET", "/api/v1/clubs/$clubId/announcements/current", token).json["myStatus"].asText())
         assertEquals(200, call("DELETE", "/api/v1/announcements/$announcementId/enrollment", token).status)
 
+        assertEquals(60, schedule.json["matchDurationMinutes"].asInt())
+        val stats = call("GET", "/api/v1/clubs/$clubId/stats?sortBy=WINS", token)
+        assertEquals(200, stats.status, stats.body)
+        assertEquals(1, stats.json[0]["rank"].asInt())
+        assertEquals(0, call("GET", "/api/v1/clubs/$clubId/stats/me", token).json["matchesPlayed"].asInt())
+        assertFalse(members.json[0].has("goalsScored"), "Counters moved to /stats")
+
         val ratings = call("GET", "/api/v1/clubs/$clubId/ratings", token)
         assertEquals(200, ratings.status)
         assertEquals(1, ratings.json[0]["rank"].asInt())

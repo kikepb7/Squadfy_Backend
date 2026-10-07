@@ -32,6 +32,8 @@ fun MatchEntity.toMatchModel(
         teamA = players.filter { it.teamSide == TeamSideEntity.TEAM_A }.map { it.clubMemberId },
         teamB = players.filter { it.teamSide == TeamSideEntity.TEAM_B }.map { it.clubMemberId },
         events = events.map { it.toMatchEventModel() },
+        durationMinutes = durationMinutes,
+        minutesPlayed = players.associate { it.clubMemberId to (it.minutesPlayed ?: durationMinutes) },
         createdAt = createdAt,
         updatedAt = updatedAt
     )
@@ -61,6 +63,7 @@ fun ClubMatchScheduleEntity.toClubMatchScheduleModel(): ClubMatchScheduleModel =
         timeZone = ZoneId.of(timeZone),
         format = format,
         maxPlayers = maxPlayers,
+        matchDurationMinutes = matchDurationMinutes,
         isActive = isActive,
         createdAt = createdAt,
         updatedAt = updatedAt

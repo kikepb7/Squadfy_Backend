@@ -48,6 +48,7 @@ class ClubMatchController(
             clubId = clubId,
             userId = requestUserId,
             scheduledAt = body.scheduledAt,
-            format = body.format
+            format = body.format,
+            durationMinutes = body.durationMinutes
         ).toMatchDto()
 }

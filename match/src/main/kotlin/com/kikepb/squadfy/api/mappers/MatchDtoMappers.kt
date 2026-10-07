@@ -3,6 +3,8 @@ package com.kikepb.squadfy.api.mappers
 import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchAnnouncementEntryDto
 import com.kikepb.squadfy.api.dto.ClubMatchScheduleDto
+import com.kikepb.squadfy.api.dto.ClubStatsEntryDto
+import com.kikepb.squadfy.api.dto.PlayerStatsDto
 import com.kikepb.squadfy.api.dto.CurrentMatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.MatchEventDto
@@ -22,6 +24,8 @@ import com.kikepb.squadfy.domain.model.MatchEventType.RED_CARD
 import com.kikepb.squadfy.domain.model.MatchEventType.YELLOW_CARD
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.PlayerRatingModel
+import com.kikepb.squadfy.domain.model.PlayerStatsModel
+import com.kikepb.squadfy.domain.model.StatsLeaderboard
 import com.kikepb.squadfy.domain.model.RatingLeaderboard
 import com.kikepb.squadfy.domain.model.TeamBalanceModel
 import kotlin.math.roundToInt
@@ -34,6 +38,8 @@ fun MatchModel.toMatchDto(): MatchDto = MatchDto(
     enrolledPlayers = enrolledPlayers,
     teamA = teamA,
     teamB = teamB,
+    durationMinutes = durationMinutes,
+    minutesPlayed = minutesPlayed,
     teamAScore = teamAScore,
     teamBScore = teamBScore,
     goals = events.filter { it.type == GOAL }.map { it.toMatchEventDto() },
@@ -61,6 +67,7 @@ fun ClubMatchScheduleModel.toClubMatchScheduleDto(): ClubMatchScheduleDto = Club
     timeZone = timeZone.id,
     format = format,
     maxPlayers = maxPlayers,
+    matchDurationMinutes = matchDurationMinutes,
     isActive = isActive,
     createdAt = createdAt,
     updatedAt = updatedAt
@@ -128,4 +135,31 @@ fun CurrentMatchAnnouncementModel.toCurrentMatchAnnouncementDto(): CurrentMatchA
     matchScheduledAt = matchScheduledAt,
     myStatus = myStatus,
     myWaitlistPosition = myWaitlistPosition
+)
+
+fun PlayerStatsModel.toPlayerStatsDto(): PlayerStatsDto = PlayerStatsDto(
+    clubMemberId = clubMemberId,
+    matchesPlayed = matchesPlayed,
+    wins = wins,
+    draws = draws,
+    losses = losses,
+    goals = goals,
+    assists = assists,
+    yellowCards = yellowCards,
+    redCards = redCards,
+    minutesPlayed = minutesPlayed
+)
+
+fun StatsLeaderboard.RankedStats.toClubStatsEntryDto(): ClubStatsEntryDto = ClubStatsEntryDto(
+    rank = rank,
+    clubMemberId = stats.clubMemberId,
+    matchesPlayed = stats.matchesPlayed,
+    wins = stats.wins,
+    draws = stats.draws,
+    losses = stats.losses,
+    goals = stats.goals,
+    assists = stats.assists,
+    yellowCards = stats.yellowCards,
+    redCards = stats.redCards,
+    minutesPlayed = stats.minutesPlayed
 )

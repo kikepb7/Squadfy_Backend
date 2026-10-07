@@ -51,6 +51,9 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 | `POST /api/matchAnnouncements/{id}/enroll` | `POST /api/v1/announcements/{id}/enrollment` |
 | `DELETE /api/matchAnnouncements/{id}/withdraw` | `DELETE /api/v1/announcements/{id}/enrollment` |
 | `GET /api/player-ratings/club/{clubId}[/me]` | `GET /api/v1/clubs/{clubId}/ratings[/me]` |
+| — | `GET /api/v1/clubs/{clubId}/stats?sortBy=GOALS\|ASSISTS\|MATCHES\|MINUTES\|WINS` (clasificación de estadísticas) |
+| — | `GET /api/v1/clubs/{clubId}/stats/me` |
+| — | `PUT /api/v1/matches/{matchId}/players/{memberId}/minutes` `{minutes}` (gestores, antes de cerrar) |
 | `GET /api/chat` | `GET /api/v1/chats` |
 | `POST /api/chat/create-chat` | `POST /api/v1/chats` → **201** |
 | `GET /api/chat/{chatId}`, `GET /api/chat/{chatId}/messages?before=&pageSize=` | `GET /api/v1/chats/{chatId}`, `GET /api/v1/chats/{chatId}/messages?before=&pageSize=` |
@@ -66,7 +69,9 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 
 - **Posición** del jugador: valor cerrado `GOALKEEPER | DEFENDER | MIDFIELDER | FORWARD` (antes texto libre).
 - **Horario** (`schedule`): `format` (`FIVE_A_SIDE | SEVEN_A_SIDE | ELEVEN_A_SIDE`) y `timeZone` (IANA, por defecto `Europe/Madrid`); `maxPlayers` lo calcula el formato (10/14/22). Desaparece `matchAnnouncementOpenDaysBeforeMatch`.
-- **Partido manual**: `format` opcional en lugar de `maxPlayers`.
+- **Partido manual**: `format` opcional en lugar de `maxPlayers`, y `durationMinutes` opcional.
+- **Duración y minutos**: el horario tiene `matchDurationMinutes` (10–180, por defecto 60). `MatchDto` añade `durationMinutes` y `minutesPlayed` (mapa `clubMemberId → minutos` efectivos de cada jugador).
+- **Estadísticas**: `ClubMemberDto` **ya no lleva** `goalsScored`, `assists`, `yellowCards`, `redCards`, `minutesPlayed` ni `matchesPlayed` (siempre valían 0). Ahora salen de `/stats`: `{rank, clubMemberId, matchesPlayed, wins, draws, losses, goals, assists, yellowCards, redCards, minutesPlayed}`, calculadas de los partidos cerrados.
 - **Convocatoria**: `entries` (confirmados) + `waitlist`, cada entrada con `status` (`CONFIRMED | WAITLISTED`); `confirmedCount` y `waitlistCount` sustituyen a `enrolledCount`. Se cierra a las **22:00 del día anterior**; después no se puede apuntar ni desapuntar. Al cerrarse, los equipos se publican solos.
 - **Convocatoria vigente** (nuevo): `{ announcement, matchScheduledAt, myStatus: NOT_ENROLLED | CONFIRMED | WAITLISTED, myWaitlistPosition }`; 404 si no hay partido programado.
 - **Ratings** (nuevo): clasificación `[{ rank, clubMemberId, rating, matchesRated, isProvisional }]`; `/me` añade `rank` y `totalPlayers`. Nombre y foto se cruzan con `/clubs/{clubId}/members`.

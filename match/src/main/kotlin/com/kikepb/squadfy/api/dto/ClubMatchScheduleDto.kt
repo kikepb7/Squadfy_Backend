@@ -15,6 +15,7 @@ data class ClubMatchScheduleDto(
     val timeZone: String,
     val format: MatchFormat,
     val maxPlayers: Int,
+    val matchDurationMinutes: Int,
     val isActive: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant

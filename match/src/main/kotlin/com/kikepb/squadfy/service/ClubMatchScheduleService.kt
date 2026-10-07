@@ -8,6 +8,7 @@ import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMatchScheduleEntity
+import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_MATCH_DURATION_MINUTES
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubMatchScheduleModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMatchScheduleRepository
 import org.springframework.stereotype.Service
@@ -31,7 +32,8 @@ class ClubMatchScheduleService(
         matchDayOfWeek: DayOfWeek,
         matchTime: LocalTime,
         timeZone: String,
-        format: MatchFormat
+        format: MatchFormat,
+        matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES
     ): ClubMatchScheduleModel {
         clubAccessGuard.requireManager(clubId = clubId, userId = userId)
 
@@ -46,7 +48,8 @@ class ClubMatchScheduleService(
                 matchTime = matchTime,
                 timeZone = parseZone(timeZone).id,
                 format = format,
-                maxPlayers = format.maxPlayers
+                maxPlayers = format.maxPlayers,
+                matchDurationMinutes = matchDurationMinutes
             )
         ).toClubMatchScheduleModel()
 
@@ -68,7 +71,8 @@ class ClubMatchScheduleService(
         matchTime: LocalTime?,
         timeZone: String?,
         format: MatchFormat?,
-        isActive: Boolean?
+        isActive: Boolean?,
+        matchDurationMinutes: Int? = null
     ): ClubMatchScheduleModel {
         clubAccessGuard.requireManager(clubId = clubId, userId = userId)
         val entity = clubMatchScheduleRepository.findByClubId(clubId = clubId)
@@ -82,6 +86,7 @@ class ClubMatchScheduleService(
             entity.maxPlayers = it.maxPlayers
         }
         isActive?.let { entity.isActive = it }
+        matchDurationMinutes?.let { entity.matchDurationMinutes = it }
 
         val schedule = clubMatchScheduleRepository.saveAndFlush(entity).toClubMatchScheduleModel()
         if (schedule.isActive) matchPlanningService.planNextMatch(schedule = schedule)

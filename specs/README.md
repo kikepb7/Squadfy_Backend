@@ -24,7 +24,7 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [001](001-clubs-membership/spec.md) | Clubes y membresía | Hecha | — |
 | [002](002-match-cycle/spec.md) | Ciclo semanal, convocatoria y lista de espera | Hecha | Sí |
 | [003](003-team-draw/spec.md) | Sorteo de equipos equilibrados + rating Elo | Hecha | Sí |
-| [004](004-match-results-stats/spec.md) | Resultado del partido y estadísticas | En curso (cerrar/reabrir hecho) | Sí |
+| [004](004-match-results-stats/spec.md) | Resultado del partido y estadísticas | Hecha | — |
 | [005](005-match-notifications/spec.md) | Notificaciones del ciclo de partido | Hecha | — |
 | [006](006-production-readiness/spec.md) | Preparación para producción | Hecha (OpenAPI y rutas → `api-consistency`) | Solo falta elegir hosting |
 | [007](007-api-consistency/spec.md) | API coherente y documentada (v1) | Hecha — falta migrar la app ([guía](../docs/api/migracion-v1.md)) | Sí (app móvil) |

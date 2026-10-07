@@ -14,6 +14,9 @@ data class MatchDto(
     val enrolledPlayers: List<ClubMemberId>,
     val teamA: List<ClubMemberId>,
     val teamB: List<ClubMemberId>,
+    val durationMinutes: Int,
+    /** Effective minutes of every team player. */
+    val minutesPlayed: Map<ClubMemberId, Int>,
     val teamAScore: Int,
     val teamBScore: Int,
     val goals: List<MatchEventDto>,

@@ -10,6 +10,7 @@ import com.kikepb.squadfy.domain.club.ClubRole
 import com.kikepb.squadfy.domain.club.PlayerPosition
 import com.kikepb.squadfy.domain.exception.ForbiddenException
 import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
+import com.kikepb.squadfy.domain.exception.InvalidPlayerMinutesException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementAlreadyEnrolledException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementClosedException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementNotFoundException
@@ -21,6 +22,8 @@ import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus
 import com.kikepb.squadfy.domain.model.PlayerRatingCalculator
+import com.kikepb.squadfy.domain.model.PlayerStatsModel
+import com.kikepb.squadfy.domain.model.StatsSortBy
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
@@ -72,7 +75,8 @@ import kotlin.test.assertTrue
     PlayerRatingService::class,
     MatchSchedulerService::class,
     MatchNotificationPublisher::class,
-    MatchAnnouncementNotificationService::class
+    MatchAnnouncementNotificationService::class,
+    PlayerStatsService::class
 )
 class MatchFlowIntegrationTest {
 
@@ -100,6 +104,7 @@ class MatchFlowIntegrationTest {
     @Autowired lateinit var ratingService: PlayerRatingService
     @Autowired lateinit var scheduler: MatchSchedulerService
     @Autowired lateinit var notificationService: MatchAnnouncementNotificationService
+    @Autowired lateinit var statsService: PlayerStatsService
     @MockitoBean lateinit var eventPublisher: EventPublisher
 
     private fun publishedEvents(): List<MatchEvent> =
@@ -436,6 +441,54 @@ class MatchFlowIntegrationTest {
     }
 
     @Test
+    fun `players add the match duration unless a manager sets their minutes`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        enrollPlayers(announcementOf(match), count = 10)
+        val teams = teamService.generateTeams(match.id, owner, TeamGenerationMode.AUTO, null, null)
+        val substitute = teams.teamB.first()
+
+        assertEquals(60, teams.durationMinutes)
+        val adjusted = matchService.setPlayerMinutes(matchId = match.id, userId = owner, clubMemberId = substitute, minutes = 30)
+        assertEquals(30, adjusted.minutesPlayed[substitute])
+        assertEquals(60, adjusted.minutesPlayed[teams.teamA.first()])
+        assertFailsWith<InvalidPlayerMinutesException> { matchService.setPlayerMinutes(match.id, owner, substitute, 70) }
+
+        clock.now = madrid("2026-10-08T21:30")
+        matchService.completeMatch(matchId = match.id, userId = owner)
+        assertFailsWith<InvalidMatchStateException> { matchService.setPlayerMinutes(match.id, owner, substitute, 20) }
+        assertEquals(30, statsService.getClubStats(clubId = clubId, userId = owner, sortBy = StatsSortBy.MINUTES)
+            .single { it.stats.clubMemberId == substitute }.stats.minutesPlayed)
+    }
+
+    @Test
+    fun `statistics come from completed matches and follow corrections after reopening`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val match = nextMatch()
+        val players = enrollPlayers(announcementOf(match), count = 10)
+        val teams = teamService.generateTeams(match.id, owner, TeamGenerationMode.AUTO, null, null)
+        val scorer = teams.teamA.first()
+        val goals = List(2) { eventService.addEvent(match.id, owner, scorer, MatchEventType.GOAL, null).events.last().id }
+
+        assertTrue(statsService.getClubStats(clubId, owner, StatsSortBy.GOALS).all { it.stats.matchesPlayed == 0 })
+
+        clock.now = madrid("2026-10-08T21:30")
+        matchService.completeMatch(matchId = match.id, userId = owner)
+        matchService.reopenMatch(matchId = match.id, userId = owner)
+        eventService.removeEvent(matchId = match.id, userId = owner, eventId = goals.first())
+        matchService.completeMatch(matchId = match.id, userId = owner)
+
+        val ranking = statsService.getClubStats(clubId = clubId, userId = players.last(), sortBy = StatsSortBy.GOALS)
+        assertEquals(11, ranking.size) // owner (no matches) + 10 players
+        assertEquals(scorer, ranking.first().stats.clubMemberId)
+        assertEquals(PlayerStatsModel(scorer, matchesPlayed = 1, wins = 1, goals = 1, minutesPlayed = 60), ranking.first().stats)
+        val loser = statsService.getMyStats(clubId = clubId, userId = players.first { p -> clubs.memberIdOf(clubId, p) in teams.teamB })
+        assertEquals(1, loser.losses)
+        assertEquals(0, statsService.getMyStats(clubId = clubId, userId = owner).matchesPlayed)
+        assertFailsWith<NotClubMemberException> { statsService.getClubStats(clubId, UUID.randomUUID(), StatsSortBy.GOALS) }
+    }
+
+    @Test
     fun `each player can read their own rating`() {
         createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
         val player = UUID.randomUUID().also { clubs.addMember(clubId = clubId, userId = it) }
@@ -467,6 +520,8 @@ class FakeClubMembershipProvider : ClubMembershipProvider {
         members += ClubMembershipSnapshot(memberId = memberId, clubId = clubId, userId = userId, role = role, position = position)
         return memberId
     }
+
+    fun memberIdOf(clubId: ClubId, userId: UserId): ClubMemberId = findMembership(clubId, userId)!!.memberId
 
     override fun findMembership(clubId: ClubId, userId: UserId): ClubMembershipSnapshot? =
         members.firstOrNull { it.clubId == clubId && it.userId == userId }

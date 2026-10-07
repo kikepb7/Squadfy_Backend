@@ -8,6 +8,7 @@ import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.CANCELLED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_CLUB_TIME_ZONE
+import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_MATCH_DURATION_MINUTES
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
 import com.kikepb.squadfy.infrastructure.database.mappers.toMatchModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMatchScheduleRepository
@@ -64,6 +65,7 @@ class MatchPlanningService(
             clubId = schedule.clubId,
             scheduledAt = nextMatchDate.atTime(schedule.matchTime).atZone(zone).toInstant(),
             maxPlayers = schedule.maxPlayers,
+            durationMinutes = schedule.matchDurationMinutes,
             zone = zone
         )
         log.info("[MatchPlanning] Planned match={} for club={} on {}", match.id, schedule.clubId, nextMatchDate)
@@ -75,6 +77,7 @@ class MatchPlanningService(
         clubId: ClubId,
         scheduledAt: Instant,
         maxPlayers: Int,
+        durationMinutes: Int = durationFor(clubId),
         zone: ZoneId = zoneFor(clubId)
     ): MatchModel {
         val previousMatch = matchRepository.findFirstByClubIdAndStatusNotAndScheduledAtBeforeOrderByScheduledAtDesc(
@@ -87,7 +90,8 @@ class MatchPlanningService(
             MatchEntity(
                 clubId = clubId,
                 scheduledAt = scheduledAt,
-                status = SCHEDULED
+                status = SCHEDULED,
+                durationMinutes = durationMinutes
             )
         )
 
@@ -108,6 +112,9 @@ class MatchPlanningService(
 
         return match.toMatchModel()
     }
+
+    fun durationFor(clubId: ClubId): Int =
+        clubMatchScheduleRepository.findByClubId(clubId = clubId)?.matchDurationMinutes ?: DEFAULT_MATCH_DURATION_MINUTES
 
     fun formatFor(clubId: ClubId): MatchFormat =
         clubMatchScheduleRepository.findByClubId(clubId = clubId)?.format ?: MatchFormat.ELEVEN_A_SIDE

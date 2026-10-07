@@ -42,6 +42,9 @@ class MatchTeamPlayerEntity(
     @Enumerated(EnumType.STRING)
     @Column(name = "team_side", nullable = false)
     var teamSide: TeamSideEntity,
+    /** Minutes set by a manager; null means the whole match (spec 004 RN-6). */
+    @Column(name = "minutes_played")
+    var minutesPlayed: Int? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

@@ -4,12 +4,14 @@ import com.kikepb.squadfy.api.dto.AddMatchEventRequest
 import com.kikepb.squadfy.api.dto.GenerateTeamsRequest
 import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
+import com.kikepb.squadfy.api.dto.SetPlayerMinutesRequest
 import com.kikepb.squadfy.api.dto.TeamBalanceDto
 import com.kikepb.squadfy.api.dto.TeamGenerationModeDto
 import com.kikepb.squadfy.api.mappers.toMatchAnnouncementDto
 import com.kikepb.squadfy.api.mappers.toMatchDto
 import com.kikepb.squadfy.api.mappers.toTeamBalanceDto
 import com.kikepb.squadfy.api.util.requestUserId
+import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.MatchEventId
 import com.kikepb.squadfy.domain.type.MatchId
 import com.kikepb.squadfy.service.MatchAnnouncementService
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -95,6 +98,20 @@ class MatchController(
         matchTeamService
             .getTeamBalance(matchId = matchId, userId = requestUserId)
             .toTeamBalanceDto()
+
+    @PutMapping("/players/{memberId}/minutes")
+    @Operation(summary = "Set the minutes a player played (managers only, before completing the match)")
+    fun setPlayerMinutes(
+        @PathVariable("matchId") matchId: MatchId,
+        @PathVariable("memberId") memberId: ClubMemberId,
+        @Valid @RequestBody body: SetPlayerMinutesRequest
+    ): MatchDto =
+        matchService.setPlayerMinutes(
+            matchId = matchId,
+            userId = requestUserId,
+            clubMemberId = memberId,
+            minutes = body.minutes
+        ).toMatchDto()
 
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)

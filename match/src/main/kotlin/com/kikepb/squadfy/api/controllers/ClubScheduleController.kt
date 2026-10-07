@@ -47,7 +47,8 @@ class ClubScheduleController(
             matchDayOfWeek = body.matchDayOfWeek,
             matchTime = body.matchTime,
             timeZone = body.timeZone,
-            format = body.format
+            format = body.format,
+            matchDurationMinutes = body.matchDurationMinutes
         ).toClubMatchScheduleDto()
 
     @PatchMapping
@@ -63,6 +64,7 @@ class ClubScheduleController(
             matchTime = body.matchTime,
             timeZone = body.timeZone,
             format = body.format,
-            isActive = body.isActive
+            isActive = body.isActive,
+            matchDurationMinutes = body.matchDurationMinutes
         ).toClubMatchScheduleDto()
 }

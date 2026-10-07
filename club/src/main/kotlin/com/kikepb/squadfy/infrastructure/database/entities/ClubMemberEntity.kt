@@ -45,18 +45,6 @@ class ClubMemberEntity(
     var shirtNumber: Int? = null,
     @Column(nullable = true)
     var position: String? = null,
-    @Column(nullable = false)
-    var goals: Int = 0,
-    @Column(nullable = false)
-    var assists: Int = 0,
-    @Column(nullable = false)
-    var yellowCards: Int = 0,
-    @Column(nullable = false)
-    var redCards: Int = 0,
-    @Column(nullable = false)
-    var minutesPlayed: Int = 0,
-    @Column(nullable = false)
-    var matchesPlayed: Int = 0,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var role: ClubMemberRoleEntity = PLAYER,

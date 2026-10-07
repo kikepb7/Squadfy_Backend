@@ -37,12 +37,6 @@ fun ClubMemberEntity.toClubMemberModel(username: String, email: String, profileP
         profilePictureUrl = profilePictureUrl,
         shirtNumber = shirtNumber,
         position = position,
-        goalsScored = goals,
-        assists = assists,
-        yellowCards = yellowCards,
-        redCards = redCards,
-        minutesPlayed = minutesPlayed,
-        matchesPlayed = matchesPlayed,
         role = role.toClubMemberRole(),
         createdAt = createdAt,
         updatedAt = updatedAt

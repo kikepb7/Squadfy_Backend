@@ -42,6 +42,8 @@ class ClubMatchScheduleEntity(
     @Enumerated(EnumType.STRING)
     @Column(name = "format", nullable = false, length = 16)
     var format: MatchFormat = MatchFormat.ELEVEN_A_SIDE,
+    @Column(name = "match_duration_minutes", nullable = false)
+    var matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
     /** Derived from [format]; kept as a column so announcements can copy it. */
     @Column(name = "max_players", nullable = false)
     var maxPlayers: Int = format.maxPlayers,
@@ -54,3 +56,4 @@ class ClubMatchScheduleEntity(
 )
 
 const val DEFAULT_CLUB_TIME_ZONE = "Europe/Madrid"
+const val DEFAULT_MATCH_DURATION_MINUTES = 60

@@ -39,6 +39,8 @@ class MatchEntity(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: MatchStatus = SCHEDULED,
+    @Column(name = "duration_minutes", nullable = false)
+    var durationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

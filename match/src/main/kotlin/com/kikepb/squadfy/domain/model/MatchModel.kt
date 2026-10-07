@@ -14,6 +14,9 @@ data class MatchModel(
     val teamA: List<ClubMemberId> = emptyList(),
     val teamB: List<ClubMemberId> = emptyList(),
     val events: List<MatchEventModel> = emptyList(),
+    val durationMinutes: Int,
+    /** Effective minutes of every team player (whole match unless a manager set them). */
+    val minutesPlayed: Map<ClubMemberId, Int> = emptyMap(),
     val createdAt: Instant,
     val updatedAt: Instant
 ) {

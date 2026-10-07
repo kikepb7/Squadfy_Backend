@@ -5,6 +5,7 @@ import com.kikepb.squadfy.domain.exception.ClubMatchScheduleNotFoundException
 import com.kikepb.squadfy.domain.exception.InvalidClubMatchScheduleException
 import com.kikepb.squadfy.domain.exception.InvalidMatchEventException
 import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
+import com.kikepb.squadfy.domain.exception.InvalidPlayerMinutesException
 import com.kikepb.squadfy.domain.exception.InvalidTeamGenerationRequestException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementAlreadyEnrolledException
 import com.kikepb.squadfy.domain.exception.MatchAnnouncementClosedException
@@ -46,7 +47,8 @@ class MatchExceptionHandler {
         MatchAnnouncementClosedException::class,
         InvalidTeamGenerationRequestException::class,
         InvalidMatchEventException::class,
-        InvalidClubMatchScheduleException::class
+        InvalidClubMatchScheduleException::class,
+        InvalidPlayerMinutesException::class
     )
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onBadRequest(e: RuntimeException) = mapOf(

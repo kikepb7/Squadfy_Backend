@@ -14,12 +14,6 @@ data class ClubMemberModel(
     val profilePictureUrl: String?,
     val shirtNumber: Int?,
     val position: String?,
-    val goalsScored: Int,
-    val assists: Int,
-    val yellowCards: Int,
-    val redCards: Int,
-    val minutesPlayed: Int,
-    val matchesPlayed: Int,
     val role: ClubMemberRole,
     val createdAt: Instant,
     val updatedAt: Instant
