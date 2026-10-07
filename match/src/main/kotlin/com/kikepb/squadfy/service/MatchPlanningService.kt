@@ -1,23 +1,28 @@
 package com.kikepb.squadfy.service
 
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
+import com.kikepb.squadfy.domain.model.DeadlineRule
 import com.kikepb.squadfy.domain.model.MatchCalendar
 import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.CANCELLED
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus.SCHEDULED
+import com.kikepb.squadfy.domain.model.ScheduleExceptionModel.ExceptionType
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_CLUB_TIME_ZONE
 import com.kikepb.squadfy.infrastructure.database.entities.DEFAULT_MATCH_DURATION_MINUTES
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
+import com.kikepb.squadfy.infrastructure.database.mappers.toClubMatchScheduleModel
 import com.kikepb.squadfy.infrastructure.database.mappers.toMatchModel
 import com.kikepb.squadfy.infrastructure.database.repositories.ClubMatchScheduleRepository
 import com.kikepb.squadfy.infrastructure.database.repositories.MatchRepository
+import com.kikepb.squadfy.infrastructure.database.repositories.ScheduleExceptionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /**
@@ -29,7 +34,9 @@ import java.time.ZoneId
 class MatchPlanningService(
     private val matchRepository: MatchRepository,
     private val clubMatchScheduleRepository: ClubMatchScheduleRepository,
+    private val scheduleExceptionRepository: ScheduleExceptionRepository,
     private val matchAnnouncementService: MatchAnnouncementService,
+    private val matchNotificationPublisher: MatchNotificationPublisher,
     private val clock: Clock
 ) {
 
@@ -37,7 +44,8 @@ class MatchPlanningService(
 
     /**
      * Plans the next weekly match when the club has no upcoming scheduled match and no match
-     * (even a cancelled one) exists yet on the next match day.
+     * (even a cancelled one) exists yet for the next match week. Weeks cancelled by a schedule
+     * exception are skipped and moved weeks are planned at their new time (spec 008 RN-B2).
      */
     @Transactional
     fun planNextMatch(schedule: ClubMatchScheduleModel): MatchModel? {
@@ -50,25 +58,39 @@ class MatchPlanningService(
             return null
         }
 
-        val nextMatchDate = MatchCalendar.nextMatchDate(today = now.atZone(zone).toLocalDate(), matchDay = schedule.matchDayOfWeek)
-        val dayStart = nextMatchDate.atStartOfDay(zone).toInstant()
-        val nextDayStart = nextMatchDate.plusDays(1).atStartOfDay(zone).toInstant()
+        val firstDate = MatchCalendar.nextMatchDate(today = now.atZone(zone).toLocalDate(), matchDay = schedule.matchDayOfWeek)
+        for (week in 0L until MAX_WEEKS_AHEAD) {
+            val date = firstDate.plusWeeks(week)
+            val exception = scheduleExceptionRepository.findByClubIdAndScheduleDate(clubId = schedule.clubId, scheduleDate = date)
+            val scheduledAt = when (exception?.type) {
+                ExceptionType.CANCELLED -> continue
+                ExceptionType.RESCHEDULED -> exception.newScheduledAt?.takeIf { it.isAfter(now) } ?: continue
+                null -> regularMatchTime(schedule = schedule, date = date)
+            }
+            if (isWeekPlanned(schedule = schedule, date = date)) return null
+            return planWeek(schedule = schedule, date = date, scheduledAt = scheduledAt)
+        }
+        return null
+    }
 
-        if (matchRepository.existsByClubIdAndScheduledAtGreaterThanEqualAndScheduledAtLessThan(
-                clubId = schedule.clubId,
-                from = dayStart,
-                to = nextDayStart
-            )
-        ) return null
-
+    /** Creates the match of a schedule week (its regular time unless [scheduledAt] says otherwise). */
+    @Transactional
+    fun planWeek(
+        schedule: ClubMatchScheduleModel,
+        date: LocalDate,
+        scheduledAt: Instant = regularMatchTime(schedule = schedule, date = date)
+    ): MatchModel {
         val match = createMatchWithAnnouncement(
             clubId = schedule.clubId,
-            scheduledAt = nextMatchDate.atTime(schedule.matchTime).atZone(zone).toInstant(),
+            scheduledAt = scheduledAt,
             maxPlayers = schedule.maxPlayers,
             durationMinutes = schedule.matchDurationMinutes,
-            zone = zone
+            zone = schedule.timeZone,
+            scheduleDate = date,
+            close = schedule.close,
+            draw = schedule.draw
         )
-        log.info("[MatchPlanning] Planned match={} for club={} on {}", match.id, schedule.clubId, nextMatchDate)
+        log.info("[MatchPlanning] Planned match={} for club={} (week of {})", match.id, schedule.clubId, date)
         return match
     }
 
@@ -78,7 +100,10 @@ class MatchPlanningService(
         scheduledAt: Instant,
         maxPlayers: Int,
         durationMinutes: Int = durationFor(clubId),
-        zone: ZoneId = zoneFor(clubId)
+        zone: ZoneId = zoneFor(clubId),
+        scheduleDate: LocalDate? = null,
+        close: DeadlineRule = scheduleOf(clubId)?.close ?: DeadlineRule.DEFAULT,
+        draw: DeadlineRule = scheduleOf(clubId)?.draw ?: DeadlineRule.DEFAULT
     ): MatchModel {
         val previousMatch = matchRepository.findFirstByClubIdAndStatusNotAndScheduledAtBeforeOrderByScheduledAtDesc(
             clubId = clubId,
@@ -91,6 +116,7 @@ class MatchPlanningService(
                 clubId = clubId,
                 scheduledAt = scheduledAt,
                 status = SCHEDULED,
+                scheduleDate = scheduleDate,
                 durationMinutes = durationMinutes
             )
         )
@@ -99,7 +125,9 @@ class MatchPlanningService(
             matchAt = scheduledAt,
             zone = zone,
             previousMatchAt = previousMatch?.scheduledAt,
-            now = clock.instant()
+            now = clock.instant(),
+            close = close,
+            draw = draw
         )
 
         matchAnnouncementService.createMatchAnnouncement(
@@ -107,11 +135,54 @@ class MatchPlanningService(
             clubId = clubId,
             maxPlayers = maxPlayers,
             opensAt = window.opensAt,
-            closesAt = window.closesAt
+            closesAt = window.closesAt,
+            drawAt = window.drawAt
         )
 
         return match.toMatchModel()
     }
+
+    /**
+     * Moves a scheduled match keeping its enrollments: close and draw are recalculated for the new
+     * date and every member is notified (spec 008 RN-B3).
+     */
+    @Transactional
+    fun moveMatch(match: MatchEntity, newScheduledAt: Instant) {
+        val previousScheduledAt = match.scheduledAt
+        if (previousScheduledAt == newScheduledAt) return
+
+        val schedule = scheduleOf(match.clubId)
+        match.scheduledAt = newScheduledAt
+        matchRepository.saveAndFlush(match)
+
+        val window = MatchCalendar.announcementWindow(
+            matchAt = newScheduledAt,
+            zone = schedule?.timeZone ?: ZoneId.of(DEFAULT_CLUB_TIME_ZONE),
+            previousMatchAt = null,
+            now = clock.instant(),
+            close = schedule?.close ?: DeadlineRule.DEFAULT,
+            draw = schedule?.draw ?: DeadlineRule.DEFAULT
+        )
+        matchAnnouncementService.updateDeadlines(matchId = requireNotNull(match.id), closesAt = window.closesAt, drawAt = window.drawAt)
+        matchNotificationPublisher.matchRescheduled(
+            clubId = match.clubId,
+            matchId = requireNotNull(match.id),
+            previousScheduledAt = previousScheduledAt,
+            newScheduledAt = newScheduledAt
+        )
+        log.info("[MatchPlanning] Moved match={} from {} to {}", match.id, previousScheduledAt, newScheduledAt)
+    }
+
+    /** Brings back a match cancelled by a schedule exception, with its enrollments (spec 008 RN-B4). */
+    @Transactional
+    fun reactivateMatch(match: MatchEntity) {
+        match.status = SCHEDULED
+        matchRepository.saveAndFlush(match)
+        matchAnnouncementService.reactivateForMatch(matchId = requireNotNull(match.id))
+    }
+
+    fun regularMatchTime(schedule: ClubMatchScheduleModel, date: LocalDate): Instant =
+        date.atTime(schedule.matchTime).atZone(schedule.timeZone).toInstant()
 
     fun durationFor(clubId: ClubId): Int =
         clubMatchScheduleRepository.findByClubId(clubId = clubId)?.matchDurationMinutes ?: DEFAULT_MATCH_DURATION_MINUTES
@@ -119,6 +190,24 @@ class MatchPlanningService(
     fun formatFor(clubId: ClubId): MatchFormat =
         clubMatchScheduleRepository.findByClubId(clubId = clubId)?.format ?: MatchFormat.ELEVEN_A_SIDE
 
+    /** A week is planned when a match of that schedule date exists or (older data) a match on that day. */
+    private fun isWeekPlanned(schedule: ClubMatchScheduleModel, date: LocalDate): Boolean {
+        if (matchRepository.existsByClubIdAndScheduleDate(clubId = schedule.clubId, scheduleDate = date)) return true
+        return matchRepository.existsByClubIdAndScheduledAtGreaterThanEqualAndScheduledAtLessThan(
+            clubId = schedule.clubId,
+            from = date.atStartOfDay(schedule.timeZone).toInstant(),
+            to = date.plusDays(1).atStartOfDay(schedule.timeZone).toInstant()
+        )
+    }
+
+    private fun scheduleOf(clubId: ClubId): ClubMatchScheduleModel? =
+        clubMatchScheduleRepository.findByClubId(clubId = clubId)?.toClubMatchScheduleModel()
+
     private fun zoneFor(clubId: ClubId): ZoneId =
         ZoneId.of(clubMatchScheduleRepository.findByClubId(clubId = clubId)?.timeZone ?: DEFAULT_CLUB_TIME_ZONE)
+
+    private companion object {
+        /** Consecutive cancelled weeks that planning looks through. */
+        const val MAX_WEEKS_AHEAD = 26L
+    }
 }

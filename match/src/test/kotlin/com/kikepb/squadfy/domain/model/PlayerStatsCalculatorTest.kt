@@ -56,4 +56,21 @@ class PlayerStatsCalculatorTest {
         assertEquals(listOf(1, 2, 2, 4), byGoals.map { it.rank })
         assertEquals(tiedMoreWins, byWins.first().stats)
     }
+
+    @Test
+    fun `the manual score decides the result while goals still count for the scorer`() {
+        val match = CompletedMatch(
+            teamA = mapOf(striker to 60),
+            teamB = mapOf(rival to 60),
+            events = listOf(Event(rival, GOAL)),
+            officialScoreA = 3,
+            officialScoreB = 2
+        )
+
+        val stats = PlayerStatsCalculator.aggregate(listOf(match))
+
+        assertEquals(1, stats.getValue(striker).wins)
+        assertEquals(1, stats.getValue(rival).losses)
+        assertEquals(1, stats.getValue(rival).goals)
+    }
 }

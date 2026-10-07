@@ -65,6 +65,13 @@ object MatchNotificationMessages {
             is MatchEvent.MatchCancelled -> listOf(
                 push(event.recipientUserIds, "partido cancelado", "Se ha cancelado el partido del $matchDate.")
             )
+            is MatchEvent.MatchRescheduled -> listOf(
+                push(
+                    userIds = event.recipientUserIds,
+                    title = "partido cambiado",
+                    body = "El partido del ${format(event.previousScheduledAt, event.timeZone, MATCH_DATE)} pasa al $matchDate."
+                )
+            )
             is MatchEvent.PromotedFromWaitlist -> listOf(
                 push(
                     userIds = listOf(event.userId),

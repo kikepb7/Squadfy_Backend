@@ -28,8 +28,10 @@ data class TeamBalanceModel(
     }
 
     data class PlayerRating(
+        /** Member id, or the guestId when [isGuest]. */
         val clubMemberId: ClubMemberId,
-        val rating: Double
+        val rating: Double,
+        val isGuest: Boolean = false
     )
 
     companion object {

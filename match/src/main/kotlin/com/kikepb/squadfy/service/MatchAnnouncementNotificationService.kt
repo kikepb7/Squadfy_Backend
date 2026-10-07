@@ -22,6 +22,7 @@ class MatchAnnouncementNotificationService(
     private val matchAnnouncementRepository: MatchAnnouncementRepository,
     private val matchAnnouncementEntryRepository: MatchAnnouncementEntryRepository,
     private val matchRepository: MatchRepository,
+    private val memberAbsenceService: MemberAbsenceService,
     private val matchNotificationPublisher: MatchNotificationPublisher,
     private val clock: Clock,
     @param:Value("\${squadfy.notifications.closing-reminder-hours:24}")
@@ -36,12 +37,14 @@ class MatchAnnouncementNotificationService(
                 val announcement = lockPending(candidate) { it.openedNotifiedAt == null } ?: return@count false
                 announcement.openedNotifiedAt = now
 
+                val matchAt = matchScheduledAt(announcement)
                 matchNotificationPublisher.announcementOpened(
                     clubId = announcement.clubId,
                     matchId = announcement.matchId,
-                    matchScheduledAt = matchScheduledAt(announcement),
+                    matchScheduledAt = matchAt,
                     announcementId = requireNotNull(announcement.id),
-                    closesAt = announcement.closesAt
+                    closesAt = announcement.closesAt,
+                    absentMemberIds = memberAbsenceService.absentMemberIds(clubId = announcement.clubId, matchAt = matchAt)
                 )
                 true
             }
@@ -72,14 +75,16 @@ class MatchAnnouncementNotificationService(
                 if (freePlaces <= 0) return@count false
 
                 announcement.closingReminderSentAt = now
+                val matchAt = matchScheduledAt(announcement)
                 matchNotificationPublisher.announcementClosingSoon(
                     clubId = announcement.clubId,
                     matchId = announcement.matchId,
-                    matchScheduledAt = matchScheduledAt(announcement),
+                    matchScheduledAt = matchAt,
                     announcementId = requireNotNull(announcement.id),
                     closesAt = announcement.closesAt,
                     freePlaces = freePlaces,
-                    enrolledMemberIds = entries.map { it.clubMemberId }.toSet()
+                    enrolledMemberIds = entries.mapNotNull { it.clubMemberId }.toSet(),
+                    absentMemberIds = memberAbsenceService.absentMemberIds(clubId = announcement.clubId, matchAt = matchAt)
                 )
                 true
             }

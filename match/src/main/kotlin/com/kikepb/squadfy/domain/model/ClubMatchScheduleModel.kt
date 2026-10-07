@@ -16,6 +16,8 @@ data class ClubMatchScheduleModel(
     val format: MatchFormat,
     val maxPlayers: Int,
     val matchDurationMinutes: Int,
+    val close: DeadlineRule = DeadlineRule.DEFAULT,
+    val draw: DeadlineRule = DeadlineRule.DEFAULT,
     val isActive: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant

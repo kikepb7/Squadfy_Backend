@@ -12,7 +12,10 @@ object PlayerStatsCalculator {
         /** Team A players and the minutes each one played. */
         val teamA: Map<ClubMemberId, Int>,
         val teamB: Map<ClubMemberId, Int>,
-        val events: List<Event>
+        val events: List<Event>,
+        /** Manual official score (spec 008 RN-E2); when null the score is the goals of [events]. */
+        val officialScoreA: Int? = null,
+        val officialScoreB: Int? = null
     ) {
         data class Event(val clubMemberId: ClubMemberId, val type: MatchEventType)
     }
@@ -21,8 +24,8 @@ object PlayerStatsCalculator {
         val stats = mutableMapOf<ClubMemberId, PlayerStatsModel>()
 
         matches.forEach { match ->
-            val goalsA = match.events.count { it.type == MatchEventType.GOAL && it.clubMemberId in match.teamA }
-            val goalsB = match.events.count { it.type == MatchEventType.GOAL && it.clubMemberId in match.teamB }
+            val goalsA = match.officialScoreA ?: match.events.count { it.type == MatchEventType.GOAL && it.clubMemberId in match.teamA }
+            val goalsB = match.officialScoreB ?: match.events.count { it.type == MatchEventType.GOAL && it.clubMemberId in match.teamB }
 
             fun accumulate(team: Map<ClubMemberId, Int>, scored: Int, conceded: Int) {
                 team.forEach { (memberId, minutes) ->

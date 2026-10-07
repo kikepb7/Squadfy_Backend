@@ -29,6 +29,7 @@ class CurrentMatchAnnouncementModelTest {
         maxPlayers = 10,
         opensAt = now,
         closesAt = now.plusSeconds(86_400),
+        drawAt = now.plusSeconds(86_400),
         status = MatchAnnouncementStatus.OPEN,
         entries = entries,
         createdAt = now,
@@ -42,7 +43,7 @@ class CurrentMatchAnnouncementModelTest {
         val secondWaiting = entry(EntryStatus.WAITLISTED, 10)
         val model = announcement(listOf(secondWaiting, confirmed, firstWaiting))
 
-        val current = CurrentMatchAnnouncementModel.of(model, now.plusSeconds(3_600), secondWaiting.clubMemberId)
+        val current = CurrentMatchAnnouncementModel.of(model, now.plusSeconds(3_600), requireNotNull(secondWaiting.clubMemberId))
 
         assertEquals(MyEnrollmentStatus.WAITLISTED, current.myStatus)
         assertEquals(2, current.myWaitlistPosition)
@@ -53,7 +54,7 @@ class CurrentMatchAnnouncementModelTest {
         val confirmed = entry(EntryStatus.CONFIRMED, 0)
         val model = announcement(listOf(confirmed))
 
-        val mine = CurrentMatchAnnouncementModel.of(model, now, confirmed.clubMemberId)
+        val mine = CurrentMatchAnnouncementModel.of(model, now, requireNotNull(confirmed.clubMemberId))
         val other = CurrentMatchAnnouncementModel.of(model, now, UUID.randomUUID())
 
         assertEquals(MyEnrollmentStatus.CONFIRMED, mine.myStatus)

@@ -54,13 +54,16 @@ class PlayerStatsService(
             matches.map { match ->
                 val players = playersByMatch[match.id].orEmpty()
                 fun team(side: TeamSideEntity) = players
-                    .filter { it.teamSide == side }
-                    .associate { it.clubMemberId to (it.minutesPlayed ?: match.durationMinutes) }
+                    .filter { it.teamSide == side && it.clubMemberId != null }
+                    .associate { requireNotNull(it.clubMemberId) to (it.minutesPlayed ?: match.durationMinutes) }
+                val isManualScore = match.manualTeamAScore != null && match.manualTeamBScore != null
 
                 CompletedMatch(
                     teamA = team(TeamSideEntity.TEAM_A),
                     teamB = team(TeamSideEntity.TEAM_B),
-                    events = eventsByMatch[match.id].orEmpty().map { CompletedMatch.Event(clubMemberId = it.clubMemberId, type = it.type) }
+                    events = eventsByMatch[match.id].orEmpty().map { CompletedMatch.Event(clubMemberId = it.clubMemberId, type = it.type) },
+                    officialScoreA = if (isManualScore) match.manualTeamAScore else null,
+                    officialScoreB = if (isManualScore) match.manualTeamBScore else null
                 )
             }
         )

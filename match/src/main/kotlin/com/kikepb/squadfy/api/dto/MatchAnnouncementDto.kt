@@ -15,6 +15,8 @@ data class MatchAnnouncementDto(
     val waitlistCount: Int,
     val opensAt: Instant,
     val closesAt: Instant,
+    /** When the teams are drawn automatically. */
+    val drawAt: Instant,
     val status: MatchAnnouncementStatus,
     /** Confirmed players in enrollment order. */
     val entries: List<MatchAnnouncementEntryDto>,

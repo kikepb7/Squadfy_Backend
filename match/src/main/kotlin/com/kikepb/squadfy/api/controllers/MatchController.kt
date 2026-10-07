@@ -4,6 +4,7 @@ import com.kikepb.squadfy.api.dto.AddMatchEventRequest
 import com.kikepb.squadfy.api.dto.GenerateTeamsRequest
 import com.kikepb.squadfy.api.dto.MatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
+import com.kikepb.squadfy.api.dto.MatchScoreRequest
 import com.kikepb.squadfy.api.dto.SetPlayerMinutesRequest
 import com.kikepb.squadfy.api.dto.TeamBalanceDto
 import com.kikepb.squadfy.api.dto.TeamGenerationModeDto
@@ -64,8 +65,28 @@ class MatchController(
             .cancelMatch(matchId = matchId, userId = requestUserId)
             .toMatchDto()
 
+    @PutMapping("/score")
+    @Operation(
+        summary = "Set the official final score (managers only, before completing the match)",
+        description = "When set, it decides win/draw/loss in ratings and stats; goal events still count for each scorer."
+    )
+    fun setScore(
+        @PathVariable("matchId") matchId: MatchId,
+        @Valid @RequestBody body: MatchScoreRequest
+    ): MatchDto =
+        matchService
+            .setScore(matchId = matchId, userId = requestUserId, teamAScore = body.teamAScore, teamBScore = body.teamBScore)
+            .toMatchDto()
+
+    @DeleteMapping("/score")
+    @Operation(summary = "Remove the manual score and go back to the goal events (managers only)")
+    fun clearScore(@PathVariable("matchId") matchId: MatchId): MatchDto =
+        matchService
+            .clearScore(matchId = matchId, userId = requestUserId)
+            .toMatchDto()
+
     @PostMapping("/complete")
-    @Operation(summary = "Close the match with the score of its goal events and update ratings (managers only)")
+    @Operation(summary = "Close the match with its official score (manual score or goal events) and update ratings (managers only)")
     fun completeMatch(@PathVariable("matchId") matchId: MatchId): MatchDto =
         matchService
             .completeMatch(matchId = matchId, userId = requestUserId)

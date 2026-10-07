@@ -118,6 +118,73 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
     }
 
     @Test
+    fun `guests, schedule exceptions, absences, close and draw times and manual score (spec 008)`() {
+        val (clubId, code, ownerToken) = newClub("Parity FC")
+        val (_, playerToken) = newUser()
+        call("POST", "/api/v1/clubs/join", playerToken, """{"invitationCode":"$code"}""")
+
+        val badSchedule = call(
+            "POST", "/api/v1/clubs/$clubId/schedule", ownerToken,
+            """{"matchDayOfWeek":"THURSDAY","matchTime":"20:00:00","format":"FIVE_A_SIDE","closeDaysBefore":1,"closeTime":"22:00:00","drawDaysBefore":2,"drawTime":"12:00:00"}"""
+        )
+        assertEquals(400, badSchedule.status, badSchedule.body)
+        val schedule = call(
+            "POST", "/api/v1/clubs/$clubId/schedule", ownerToken,
+            """{"matchDayOfWeek":"THURSDAY","matchTime":"20:00:00","format":"FIVE_A_SIDE","closeDaysBefore":1,"closeTime":"21:00:00","drawDaysBefore":0,"drawTime":"12:00:00"}"""
+        )
+        assertEquals(201, schedule.status, schedule.body)
+        assertEquals("21:00:00", schedule.json["closeTime"].asText())
+        assertEquals(0, schedule.json["drawDaysBefore"].asInt())
+
+        val announcement = call("GET", "/api/v1/clubs/$clubId/announcements/current", playerToken).json["announcement"]
+        val announcementId = announcement["id"].asText()
+        assertTrue(announcement["drawAt"].asText() > announcement["closesAt"].asText(), announcement.toString())
+
+        val withGuest = call("POST", "/api/v1/announcements/$announcementId/guests", playerToken, """{"name":"Cousin","position":"GOALKEEPER"}""")
+        assertEquals(200, withGuest.status, withGuest.body)
+        val guest = withGuest.json["entries"][0]
+        assertEquals("GUEST", guest["participantType"].asText())
+        assertTrue(guest["clubMemberId"].isNull)
+        assertEquals("Cousin", guest["guestName"].asText())
+        assertEquals(400, call("POST", "/api/v1/announcements/$announcementId/guests", playerToken, """{"name":" "}""").status)
+        call("POST", "/api/v1/announcements/$announcementId/guests", playerToken, """{"name":"Friend"}""")
+        assertEquals(409, call("POST", "/api/v1/announcements/$announcementId/guests", playerToken, """{"name":"Third"}""").status)
+        assertEquals(200, call("DELETE", "/api/v1/announcements/$announcementId/guests/${guest["id"].asText()}", ownerToken).status)
+        assertEquals(404, call("DELETE", "/api/v1/announcements/$announcementId/guests/${UUID.randomUUID()}", ownerToken).status)
+
+        val match = call("GET", "/api/v1/clubs/$clubId/matches?status=SCHEDULED", ownerToken).json[0]
+        val matchId = match["id"].asText()
+        val weekAfter = java.time.LocalDate.parse(match["scheduleDate"].asText()).plusWeeks(1)
+        assertEquals(403, call("PUT", "/api/v1/matches/$matchId/score", playerToken, """{"teamAScore":3,"teamBScore":2}""").status)
+        val scored = call("PUT", "/api/v1/matches/$matchId/score", ownerToken, """{"teamAScore":3,"teamBScore":2}""")
+        assertEquals(200, scored.status, scored.body)
+        assertTrue(scored.json["isManualScore"].asBoolean())
+        assertEquals(3, scored.json["teamAScore"].asInt())
+        assertEquals(1, scored.json["enrolledGuests"].size())
+        assertFalse(call("DELETE", "/api/v1/matches/$matchId/score", ownerToken).json["isManualScore"].asBoolean())
+
+        val exception = call(
+            "POST", "/api/v1/clubs/$clubId/schedule/exceptions", ownerToken,
+            """{"date":"$weekAfter","type":"CANCELLED","reason":"Holidays"}"""
+        )
+        assertEquals(201, exception.status, exception.body)
+        assertEquals(403, call("POST", "/api/v1/clubs/$clubId/schedule/exceptions", playerToken, """{"date":"$weekAfter","type":"CANCELLED"}""").status)
+        assertEquals(409, call("POST", "/api/v1/clubs/$clubId/schedule/exceptions", ownerToken, """{"date":"$weekAfter","type":"CANCELLED"}""").status)
+        assertEquals(1, call("GET", "/api/v1/clubs/$clubId/schedule/exceptions", playerToken).json.size())
+        assertEquals(204, call("DELETE", "/api/v1/clubs/$clubId/schedule/exceptions/${exception.json["id"].asText()}", ownerToken).status)
+
+        val absence = call(
+            "POST", "/api/v1/clubs/$clubId/members/me/absences", playerToken,
+            """{"fromDate":"$weekAfter","toDate":"${weekAfter.plusDays(3)}","reason":"Trip"}"""
+        )
+        assertEquals(201, absence.status, absence.body)
+        assertEquals(400, call("POST", "/api/v1/clubs/$clubId/members/me/absences", playerToken, """{"fromDate":"$weekAfter","toDate":"${weekAfter.minusDays(1)}"}""").status)
+        assertEquals(1, call("GET", "/api/v1/clubs/$clubId/absences?from=$weekAfter&to=$weekAfter", ownerToken).json.size())
+        assertEquals(404, call("DELETE", "/api/v1/clubs/$clubId/members/me/absences/${absence.json["id"].asText()}", ownerToken).status)
+        assertEquals(204, call("DELETE", "/api/v1/clubs/$clubId/members/me/absences/${absence.json["id"].asText()}", playerToken).status)
+    }
+
+    @Test
     fun `member management endpoints`() {
         val (_, ownerToken) = newUser()
         val (playerId, playerToken) = newUser()

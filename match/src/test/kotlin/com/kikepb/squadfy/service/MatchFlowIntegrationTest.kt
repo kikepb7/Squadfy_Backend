@@ -76,7 +76,9 @@ import kotlin.test.assertTrue
     MatchSchedulerService::class,
     MatchNotificationPublisher::class,
     MatchAnnouncementNotificationService::class,
-    PlayerStatsService::class
+    PlayerStatsService::class,
+    MemberAbsenceService::class,
+    ScheduleExceptionService::class
 )
 class MatchFlowIntegrationTest {
 

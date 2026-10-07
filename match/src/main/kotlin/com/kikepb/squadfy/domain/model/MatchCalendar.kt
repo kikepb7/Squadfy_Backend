@@ -3,7 +3,6 @@ package com.kikepb.squadfy.domain.model
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -15,7 +14,6 @@ import java.time.ZoneId
  */
 object MatchCalendar {
 
-    val ENROLLMENT_CUTOFF: LocalTime = LocalTime.of(22, 0)
 
     /** First [matchDay] strictly after [today]. */
     fun nextMatchDate(today: LocalDate, matchDay: DayOfWeek): LocalDate {
@@ -23,28 +21,41 @@ object MatchCalendar {
         return today.plusDays(if (daysUntil == 0) 7L else daysUntil.toLong())
     }
 
+    /**
+     * Window of the announcement: opens the day after the previous match (or now), closes at the
+     * [close] deadline and teams are drawn at the [draw] deadline (spec 008 RN-D). A deadline that
+     * already passed when the match is created falls back to kickoff time; the draw is never before
+     * the close.
+     */
     fun announcementWindow(
         matchAt: Instant,
         zone: ZoneId,
         previousMatchAt: Instant?,
-        now: Instant
+        now: Instant,
+        close: DeadlineRule = DeadlineRule.DEFAULT,
+        draw: DeadlineRule = DeadlineRule.DEFAULT
     ): AnnouncementWindow {
         val matchDate = matchAt.atZone(zone).toLocalDate()
 
-        val closesAt = matchDate.minusDays(1).atTime(ENROLLMENT_CUTOFF).atZone(zone).toInstant()
-            .takeIf { it.isAfter(now) }
+        val closesAt = close.instantFor(matchDate, zone)
+            .takeIf { it.isAfter(now) && it.isBefore(matchAt) }
             ?: matchAt
+
+        val drawAt = draw.instantFor(matchDate, zone)
+            .coerceAtLeast(closesAt)
+            .coerceAtMost(matchAt)
 
         val opensAt = previousMatchAt
             ?.atZone(zone)?.toLocalDate()?.plusDays(1)?.atStartOfDay(zone)?.toInstant()
             ?.takeIf { it.isBefore(closesAt) }
             ?: now
 
-        return AnnouncementWindow(opensAt = opensAt, closesAt = closesAt)
+        return AnnouncementWindow(opensAt = opensAt, closesAt = closesAt, drawAt = drawAt)
     }
 
     data class AnnouncementWindow(
         val opensAt: Instant,
-        val closesAt: Instant
+        val closesAt: Instant,
+        val drawAt: Instant
     )
 }

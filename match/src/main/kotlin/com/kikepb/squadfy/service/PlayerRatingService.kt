@@ -93,7 +93,9 @@ class PlayerRatingService(
             teamA = match.teamA.map(::ratedPlayer),
             teamB = match.teamB.map(::ratedPlayer),
             goalsA = match.teamAScore,
-            goalsB = match.teamBScore
+            goalsB = match.teamBScore,
+            guestsA = match.teamAGuests.size,
+            guestsB = match.teamBGuests.size
         )
 
         deltas.forEach { (memberId, delta) ->
@@ -107,6 +109,13 @@ class PlayerRatingService(
             deltas.map { (memberId, delta) -> PlayerRatingChangeEntity(matchId = match.id, clubMemberId = memberId, delta = delta) }
         )
     }
+
+    /** Rating variation of each member per completed match (spec 008 RN-F1). */
+    fun changesByMatches(matchIds: Collection<MatchId>): Map<MatchId, Map<ClubMemberId, Double>> =
+        if (matchIds.isEmpty()) emptyMap()
+        else playerRatingChangeRepository.findAllByMatchIdIn(matchIds = matchIds)
+            .groupBy { it.matchId }
+            .mapValues { (_, changes) -> changes.associate { it.clubMemberId to it.delta } }
 
     @Transactional
     fun revertMatch(clubId: ClubId, matchId: MatchId) {

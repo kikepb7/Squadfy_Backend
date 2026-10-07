@@ -20,5 +20,15 @@ data class CreateClubMatchScheduleRequest(
     val format: MatchFormat = MatchFormat.ELEVEN_A_SIDE,
     @field:Min(value = 10, message = "matchDurationMinutes must be at least 10")
     @field:Max(value = 180, message = "matchDurationMinutes cannot exceed 180")
-    val matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES
+    val matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
+    /** Announcement closes this many days before the match at [closeTime] (default 1 day before, 22:00). */
+    @field:Min(value = 0, message = "closeDaysBefore cannot be negative")
+    @field:Max(value = 6, message = "closeDaysBefore cannot exceed 6")
+    val closeDaysBefore: Int = 1,
+    val closeTime: LocalTime = LocalTime.of(22, 0),
+    /** Teams are drawn this many days before the match at [drawTime] (default: same as the close). */
+    @field:Min(value = 0, message = "drawDaysBefore cannot be negative")
+    @field:Max(value = 6, message = "drawDaysBefore cannot exceed 6")
+    val drawDaysBefore: Int? = null,
+    val drawTime: LocalTime? = null
 )

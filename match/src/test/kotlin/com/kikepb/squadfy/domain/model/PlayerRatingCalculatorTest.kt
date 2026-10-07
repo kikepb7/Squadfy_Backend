@@ -75,4 +75,21 @@ class PlayerRatingCalculatorTest {
 
         assertTrue(deltas.getValue(rookie.memberId) > deltas.getValue(veteran.memberId))
     }
+
+    @Test
+    fun `guests count in the team average with the initial rating but get no delta`() {
+        val strong = PlayerRatingCalculator.RatedPlayer(UUID.randomUUID(), rating = 1300.0, matchesRated = 20)
+        val rival = PlayerRatingCalculator.RatedPlayer(UUID.randomUUID(), rating = 1300.0, matchesRated = 20)
+
+        val withoutGuests = PlayerRatingCalculator.calculateDeltas(listOf(strong), listOf(rival), goalsA = 1, goalsB = 0)
+        val withGuest = PlayerRatingCalculator.calculateDeltas(listOf(strong), listOf(rival), goalsA = 1, goalsB = 0, guestsB = 1)
+
+        assertEquals(setOf(strong.memberId, rival.memberId), withGuest.keys)
+        // Team B is weaker with a 1000 guest, so beating it is worth less.
+        assertTrue(withGuest.getValue(strong.memberId) < withoutGuests.getValue(strong.memberId))
+
+        val onlyGuestsInA = PlayerRatingCalculator.calculateDeltas(emptyList(), listOf(rival), goalsA = 2, goalsB = 0, guestsA = 2)
+        assertEquals(setOf(rival.memberId), onlyGuestsInA.keys)
+        assertTrue(onlyGuestsInA.getValue(rival.memberId) < 0)
+    }
 }

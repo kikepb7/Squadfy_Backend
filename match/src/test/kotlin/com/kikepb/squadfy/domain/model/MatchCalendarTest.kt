@@ -5,6 +5,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.test.assertEquals
 
@@ -74,5 +75,32 @@ class MatchCalendarTest {
 
         assertEquals(Instant.parse("2026-10-21T22:00:00Z"), window.opensAt)
         assertEquals(Instant.parse("2026-10-27T21:00:00Z"), window.closesAt)
+    }
+
+    @Test
+    fun `close and draw follow the club configuration and the draw is never before the close`() {
+        val zone = ZoneId.of("Europe/Madrid")
+        val matchAt = LocalDateTime.parse("2026-10-08T20:00").atZone(zone).toInstant()
+        val now = LocalDateTime.parse("2026-10-05T10:00").atZone(zone).toInstant()
+
+        val window = MatchCalendar.announcementWindow(
+            matchAt = matchAt,
+            zone = zone,
+            previousMatchAt = null,
+            now = now,
+            close = DeadlineRule(daysBefore = 1, time = LocalTime.of(21, 0)),
+            draw = DeadlineRule(daysBefore = 0, time = LocalTime.of(12, 0))
+        )
+        assertEquals(LocalDateTime.parse("2026-10-07T21:00").atZone(zone).toInstant(), window.closesAt)
+        assertEquals(LocalDateTime.parse("2026-10-08T12:00").atZone(zone).toInstant(), window.drawAt)
+
+        val lateMatch = MatchCalendar.announcementWindow(
+            matchAt = matchAt,
+            zone = zone,
+            previousMatchAt = null,
+            now = LocalDateTime.parse("2026-10-07T23:00").atZone(zone).toInstant()
+        )
+        assertEquals(matchAt, lateMatch.closesAt)
+        assertEquals(matchAt, lateMatch.drawAt)
     }
 }

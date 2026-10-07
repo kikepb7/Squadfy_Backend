@@ -27,15 +27,18 @@ class MatchSchedulerService(
         }
     }
 
-    /** Every 5 minutes so announcements close (and teams are published) right after 22:00 in any time zone. */
+    /**
+     * Every 5 minutes: closes the announcements whose close time passed and then publishes the teams of
+     * the closed announcements whose draw time arrived (spec 008 RN-D3), in any time zone.
+     */
     @Scheduled(cron = "0 */5 * * * *", zone = "UTC")
     fun closeExpiredMatchAnnouncements() {
         val closedMatchIds = matchAnnouncementService.closeExpiredMatchAnnouncements()
         if (closedMatchIds.isNotEmpty()) log.info("[MatchScheduler] Closed {} expired match announcements", closedMatchIds.size)
 
-        closedMatchIds.forEach { matchId ->
+        matchAnnouncementService.findDueDraws().forEach { matchId ->
             try {
-                matchTeamService.publishTeamsOnAnnouncementClosed(matchId = matchId)
+                matchTeamService.publishTeamsAtDrawTime(matchId = matchId)
                     ?.let { log.info("[MatchScheduler] Published teams for match={}", matchId) }
             } catch (ex: Exception) {
                 log.error("[MatchScheduler] Error publishing teams for match={}: {}", matchId, ex.message, ex)

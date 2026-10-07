@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.exception.InvalidMatchScoreException
 import com.kikepb.squadfy.domain.exception.InvalidMatchStateException
 import com.kikepb.squadfy.domain.exception.InvalidPlayerMinutesException
 import com.kikepb.squadfy.domain.exception.MatchNotFoundException
@@ -71,7 +72,14 @@ class MatchService(
         val match = findMatchEntity(matchId = matchId)
         clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
         if (match.status == COMPLETED) throw InvalidMatchStateException("A completed match cannot be cancelled")
+        cancel(match = match)
+        return loadMatch(matchId = matchId)
+    }
 
+    /** Cancels the match and its announcement and notifies the enrolled members (no permission check). */
+    @Transactional
+    fun cancel(match: MatchEntity) {
+        val matchId = requireNotNull(match.id)
         val enrolled = matchAnnouncementService.getAllEntriesByMatch(matchId = matchId)
         match.status = CANCELLED
         matchRepository.saveAndFlush(match)
@@ -82,7 +90,39 @@ class MatchService(
             matchScheduledAt = match.scheduledAt,
             enrolledMemberIds = enrolled
         )
+    }
+
+    /** Official final score set by a manager (spec 008 RN-E1/E2); only while the match is scheduled. */
+    @Transactional
+    fun setScore(matchId: MatchId, userId: UserId, teamAScore: Int, teamBScore: Int): MatchModel {
+        val match = findMatchEntity(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        ensureScoreEditable(match)
+        if (teamAScore !in 0..MAX_SCORE || teamBScore !in 0..MAX_SCORE) {
+            throw InvalidMatchScoreException("Scores must be between 0 and $MAX_SCORE")
+        }
+        match.manualTeamAScore = teamAScore
+        match.manualTeamBScore = teamBScore
+        matchRepository.saveAndFlush(match)
         return loadMatch(matchId = matchId)
+    }
+
+    /** Goes back to the score given by the goal events (spec 008 RN-E4). */
+    @Transactional
+    fun clearScore(matchId: MatchId, userId: UserId): MatchModel {
+        val match = findMatchEntity(matchId = matchId)
+        clubAccessGuard.requireManager(clubId = match.clubId, userId = userId)
+        ensureScoreEditable(match)
+        match.manualTeamAScore = null
+        match.manualTeamBScore = null
+        matchRepository.saveAndFlush(match)
+        return loadMatch(matchId = matchId)
+    }
+
+    private fun ensureScoreEditable(match: MatchEntity) {
+        if (match.status != SCHEDULED) {
+            throw InvalidMatchStateException("The score can only be changed on scheduled matches (reopen a completed match first)")
+        }
     }
 
     /** Closes the match with the score given by its goal events and updates player ratings. */
@@ -94,7 +134,7 @@ class MatchService(
         if (match.scheduledAt.isAfter(clock.instant())) throw InvalidMatchStateException("The match has not started yet")
 
         val model = loadMatch(matchId = matchId)
-        if (model.teamA.isEmpty() || model.teamB.isEmpty()) {
+        if (model.teamA.size + model.teamAGuests.size == 0 || model.teamB.size + model.teamBGuests.size == 0) {
             throw InvalidMatchStateException("Teams must be generated before completing the match")
         }
 
@@ -153,13 +193,26 @@ class MatchService(
         val playersByMatch = matchTeamPlayerRepository.findAllByMatchIdIn(matchIds = matchIds).groupBy { it.matchId }
         val eventsByMatch = matchEventRepository.findAllByMatchIdIn(matchIds = matchIds).groupBy { it.matchId }
         val enrolledByMatch = matchAnnouncementService.getEnrolledPlayersByMatches(matchIds = matchIds)
+        val guestsByMatch = matchAnnouncementService.getConfirmedGuestsByMatches(matchIds = matchIds)
+        val teamGuestIds = playersByMatch.values.flatten().mapNotNull { it.guestEntryId }
+        val guestEntries = matchAnnouncementService.findGuestEntries(guestIds = teamGuestIds)
+        val ratingChangesByMatch = playerRatingService.changesByMatches(
+            matchIds = matches.filter { it.status == COMPLETED }.map { requireNotNull(it.id) }
+        )
 
         return matches.map { match ->
             match.toMatchModel(
                 players = playersByMatch[match.id].orEmpty(),
                 events = eventsByMatch[match.id].orEmpty().sortedBy { it.createdAt },
-                enrolledPlayers = enrolledByMatch[match.id].orEmpty()
+                enrolledPlayers = enrolledByMatch[match.id].orEmpty(),
+                enrolledGuests = guestsByMatch[match.id].orEmpty(),
+                guestEntries = guestEntries,
+                ratingChanges = ratingChangesByMatch[match.id].orEmpty()
             )
         }
+    }
+
+    private companion object {
+        const val MAX_SCORE = 99
     }
 }

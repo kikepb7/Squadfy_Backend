@@ -4,6 +4,7 @@ import com.kikepb.squadfy.domain.exception.ClubMatchScheduleAlreadyExistsExcepti
 import com.kikepb.squadfy.domain.exception.ClubMatchScheduleNotFoundException
 import com.kikepb.squadfy.domain.exception.InvalidClubMatchScheduleException
 import com.kikepb.squadfy.domain.model.ClubMatchScheduleModel
+import com.kikepb.squadfy.domain.model.DeadlineRule
 import com.kikepb.squadfy.domain.model.MatchFormat
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.UserId
@@ -33,9 +34,13 @@ class ClubMatchScheduleService(
         matchTime: LocalTime,
         timeZone: String,
         format: MatchFormat,
-        matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES
+        matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
+        close: DeadlineRule = DeadlineRule.DEFAULT,
+        draw: DeadlineRule? = null
     ): ClubMatchScheduleModel {
         clubAccessGuard.requireManager(clubId = clubId, userId = userId)
+        val drawRule = draw ?: close
+        validateDeadlines(matchTime = matchTime, close = close, draw = drawRule)
 
         if (clubMatchScheduleRepository.existsByClubId(clubId = clubId)) {
             throw ClubMatchScheduleAlreadyExistsException()
@@ -49,7 +54,11 @@ class ClubMatchScheduleService(
                 timeZone = parseZone(timeZone).id,
                 format = format,
                 maxPlayers = format.maxPlayers,
-                matchDurationMinutes = matchDurationMinutes
+                matchDurationMinutes = matchDurationMinutes,
+                closeDaysBefore = close.daysBefore,
+                closeTime = close.time,
+                drawDaysBefore = drawRule.daysBefore,
+                drawTime = drawRule.time
             )
         ).toClubMatchScheduleModel()
 
@@ -72,7 +81,11 @@ class ClubMatchScheduleService(
         timeZone: String?,
         format: MatchFormat?,
         isActive: Boolean?,
-        matchDurationMinutes: Int? = null
+        matchDurationMinutes: Int? = null,
+        closeDaysBefore: Int? = null,
+        closeTime: LocalTime? = null,
+        drawDaysBefore: Int? = null,
+        drawTime: LocalTime? = null
     ): ClubMatchScheduleModel {
         clubAccessGuard.requireManager(clubId = clubId, userId = userId)
         val entity = clubMatchScheduleRepository.findByClubId(clubId = clubId)
@@ -87,6 +100,15 @@ class ClubMatchScheduleService(
         }
         isActive?.let { entity.isActive = it }
         matchDurationMinutes?.let { entity.matchDurationMinutes = it }
+        closeDaysBefore?.let { entity.closeDaysBefore = it }
+        closeTime?.let { entity.closeTime = it }
+        drawDaysBefore?.let { entity.drawDaysBefore = it }
+        drawTime?.let { entity.drawTime = it }
+        validateDeadlines(
+            matchTime = entity.matchTime,
+            close = DeadlineRule(daysBefore = entity.closeDaysBefore, time = entity.closeTime),
+            draw = DeadlineRule(daysBefore = entity.drawDaysBefore, time = entity.drawTime)
+        )
 
         val schedule = clubMatchScheduleRepository.saveAndFlush(entity).toClubMatchScheduleModel()
         if (schedule.isActive) matchPlanningService.planNextMatch(schedule = schedule)
@@ -96,6 +118,12 @@ class ClubMatchScheduleService(
     fun findAllActive(): List<ClubMatchScheduleModel> =
         clubMatchScheduleRepository.findAllByIsActive(isActive = true)
             .map { it.toClubMatchScheduleModel() }
+
+    /** Close before kickoff and draw between the close and kickoff (spec 008 RN-D2). */
+    private fun validateDeadlines(matchTime: LocalTime, close: DeadlineRule, draw: DeadlineRule) {
+        DeadlineRule.validate(matchTime = matchTime, close = close, draw = draw)
+            ?.let { throw InvalidClubMatchScheduleException(it) }
+    }
 
     private fun parseZone(timeZone: String): ZoneId =
         try {

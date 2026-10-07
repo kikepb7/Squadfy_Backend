@@ -42,6 +42,16 @@ class ClubMatchScheduleEntity(
     @Enumerated(EnumType.STRING)
     @Column(name = "format", nullable = false, length = 16)
     var format: MatchFormat = MatchFormat.ELEVEN_A_SIDE,
+    /** Announcement closes `closeDaysBefore` days before the match at `closeTime` (spec 008 RN-D1). */
+    @Column(name = "close_days_before", nullable = false)
+    var closeDaysBefore: Int = DEFAULT_CLOSE_DAYS_BEFORE,
+    @Column(name = "close_time", nullable = false)
+    var closeTime: LocalTime = DEFAULT_CLOSE_TIME,
+    /** Teams are drawn `drawDaysBefore` days before the match at `drawTime`. */
+    @Column(name = "draw_days_before", nullable = false)
+    var drawDaysBefore: Int = DEFAULT_CLOSE_DAYS_BEFORE,
+    @Column(name = "draw_time", nullable = false)
+    var drawTime: LocalTime = DEFAULT_CLOSE_TIME,
     @Column(name = "match_duration_minutes", nullable = false)
     var matchDurationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
     /** Derived from [format]; kept as a column so announcements can copy it. */
@@ -57,3 +67,5 @@ class ClubMatchScheduleEntity(
 
 const val DEFAULT_CLUB_TIME_ZONE = "Europe/Madrid"
 const val DEFAULT_MATCH_DURATION_MINUTES = 60
+const val DEFAULT_CLOSE_DAYS_BEFORE = 1
+val DEFAULT_CLOSE_TIME: LocalTime = LocalTime.of(22, 0)

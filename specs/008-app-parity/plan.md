@@ -8,19 +8,20 @@
 - `matches`: `schedule_date` (fecha local de la semana del horario; nulo en partidos extra), `team_a_score` / `team_b_score` (marcador manual, nulos).
 - `schedule_exceptions` (`club_id`, `schedule_date`, `type`, `new_scheduled_at`, `reason`, `affected_match_id`), único `(club_id, schedule_date)`.
 - `member_absences` (`club_id`, `club_member_id`, `from_date`, `to_date`, `reason`).
-- Relleno: `schedule_date` de los partidos existentes = fecha local de `scheduled_at`; `draw_at` = `closes_at`; `teams_published_at` para convocatorias ya cerradas.
+- Relleno: `schedule_date` de los partidos existentes = fecha local de `scheduled_at` (solo si cae en el día del horario); `draw_at` = `closes_at`; `teams_published_at` para convocatorias ya cerradas.
 
 ## Dominio puro (con tests)
 - `EnrollmentAllocator`: dada la lista de entradas (miembros e invitados) y el cupo, devuelve el estado de cada una (RN-A2/A3). Toda inscripción, baja, alta/baja de invitado, ausencia o salida del club recalcula con él y detecta qué miembros han pasado a confirmados (push de promoción).
 - `MatchCalendar`: cierre y sorteo a partir de `daysBefore + time` en la zona del club; siguiente fecha del horario saltando semanas `CANCELLED` y aplicando `RESCHEDULED`.
-- `MatchScore`: marcador oficial (manual si existe, si no por eventos).
+- Marcador oficial en `MatchModel.teamAScore/teamBScore` (manual si existe, si no por eventos) y `PlayerStatsCalculator` (`officialScoreA/B`).
+- `DeadlineRule`: "N días antes a una hora local" con validación de cierre/sorteo (RN-D2).
 
 ## Servicios
 - `MatchAnnouncementService`: invitados, recálculo con `EnrollmentAllocator`, retirada por ausencia.
 - `ScheduleExceptionService`: crear/borrar con efectos sobre el partido planificado (cancelar/reactivar/mover) y evento `MatchRescheduled`.
 - `MemberAbsenceService`: CRUD + retirada de convocatorias abiertas.
 - `MatchPlanningService`: usa `schedule_date` en vez del rango de `scheduled_at` y consulta excepciones.
-- Job de sorteo separado del de cierre (`drawAt`); el de notificaciones excluye a los ausentes.
+- El job de cada 5 min cierra las convocatorias vencidas y después publica los equipos de las cerradas cuyo `drawAt` llegó (`teams_published_at` evita repetir); el de notificaciones excluye a los ausentes.
 - `TeamBalancer` ya trabaja con ids genéricos: los invitados entran como `PlayerProfile` con rating 1000.
 - `PlayerRatingService` / `PlayerStatsService`: marcador oficial; los invitados cuentan en la media del equipo para el resultado esperado, pero no reciben variación.
 

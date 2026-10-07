@@ -11,6 +11,8 @@ interface PlayerRatingChangeRepository : JpaRepository<PlayerRatingChangeEntity,
 
     fun findAllByMatchId(matchId: MatchId): List<PlayerRatingChangeEntity>
 
+    fun findAllByMatchIdIn(matchIds: Collection<MatchId>): List<PlayerRatingChangeEntity>
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM PlayerRatingChangeEntity c WHERE c.matchId = :matchId")
     fun deleteAllByMatchIdInBulk(matchId: MatchId)

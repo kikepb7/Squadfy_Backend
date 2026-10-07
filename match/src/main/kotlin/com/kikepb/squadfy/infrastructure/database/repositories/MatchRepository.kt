@@ -6,6 +6,7 @@ import com.kikepb.squadfy.domain.type.MatchId
 import com.kikepb.squadfy.infrastructure.database.entities.MatchEntity
 import org.springframework.data.jpa.repository.JpaRepository
 import java.time.Instant
+import java.time.LocalDate
 
 interface MatchRepository : JpaRepository<MatchEntity, MatchId> {
 
@@ -27,6 +28,19 @@ interface MatchRepository : JpaRepository<MatchEntity, MatchId> {
         from: Instant,
         to: Instant
     ): Boolean
+
+    fun existsByClubIdAndScheduleDate(clubId: ClubId, scheduleDate: LocalDate): Boolean
+
+    fun findFirstByClubIdAndScheduleDateOrderByCreatedAtDesc(clubId: ClubId, scheduleDate: LocalDate): MatchEntity?
+
+    fun findAllByClubIdAndStatusAndScheduledAtGreaterThanEqualAndScheduledAtLessThan(
+        clubId: ClubId,
+        status: MatchStatus,
+        from: Instant,
+        to: Instant
+    ): List<MatchEntity>
+
+    fun findFirstByClubIdAndScheduleDateAndStatus(clubId: ClubId, scheduleDate: LocalDate, status: MatchStatus): MatchEntity?
 
     fun findFirstByClubIdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
         clubId: ClubId,

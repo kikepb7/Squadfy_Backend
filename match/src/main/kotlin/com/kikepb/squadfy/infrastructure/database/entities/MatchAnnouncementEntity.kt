@@ -41,6 +41,11 @@ class MatchAnnouncementEntity(
     var opensAt: Instant,
     @Column(name = "closes_at", nullable = false)
     var closesAt: Instant,
+    /** When the teams are drawn automatically (spec 008 RN-D3); never before [closesAt]. */
+    @Column(name = "draw_at", nullable = false)
+    var drawAt: Instant,
+    @Column(name = "teams_published_at")
+    var teamsPublishedAt: Instant? = null,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: MatchAnnouncementStatus = OPEN,

@@ -31,10 +31,12 @@ Backend para gestionar **clubes de fútbol amateur**:
 
 - Un usuario crea un club y comparte un **código de invitación**; otros se unen con él. Un usuario puede estar en varios clubes, con una ficha distinta en cada uno (dorsal, posición, rol).
 - Cada club juega **un partido a la semana** (mismo día y hora). El sistema crea solo el siguiente partido y su **convocatoria**.
-- La convocatoria **se abre el día después del partido anterior** y **se cierra a las 22:00 (hora del club) del día anterior al partido**. Los miembros se apuntan y desapuntan; con el cupo lleno (10/14/22 según 5v5/7v7/11v11) entran en **lista de espera**, que sube automáticamente si alguien se desapunta.
-- Al cerrarse la convocatoria se **publican automáticamente dos equipos equilibrados** (posición + nivel). Los gestores pueden rectificarlos.
+- La convocatoria **se abre el día después del partido anterior** y **se cierra a la hora de cierre del club** (por defecto **22:00 del día anterior**, configurable). Los miembros se apuntan y desapuntan; con el cupo lleno (10/14/22 según 5v5/7v7/11v11) entran en **lista de espera**, que sube automáticamente si alguien se desapunta.
+- Cada miembro puede añadir hasta **2 invitados** por convocatoria; los invitados solo ocupan plazas que sobren (los miembros tienen prioridad).
+- A la **hora del sorteo** (por defecto, la misma que el cierre; configurable) se **publican automáticamente dos equipos equilibrados** (posición + nivel), con los invitados confirmados. Los gestores pueden rectificarlos.
+- Los gestores pueden **cancelar o mover una semana** del calendario (excepciones) y cada miembro puede registrar sus **ausencias**.
 - El nivel de cada jugador es un **rating tipo Elo** calculado automáticamente de los resultados y estadísticas; es público dentro del club (clasificación).
-- Tras el partido, los gestores registran goles, asistencias, tarjetas y minutos, y lo **cierran**; las **estadísticas** y el **ranking** se calculan de los partidos cerrados.
+- Tras el partido, los gestores registran goles, asistencias, tarjetas y minutos, pueden fijar el **marcador oficial** a mano y lo **cierran**; las **estadísticas**, el **ranking** y la **variación de rating de cada jugador en el partido** se calculan de los partidos cerrados.
 - **Chat** en tiempo real (WebSocket) y **notificaciones push** (Firebase) del ciclo de partido.
 
 ### Estado
@@ -44,7 +46,8 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Autenticación (registro, verificación por email, login, refresh, reset/cambio de contraseña) | ✅ |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
-| Sorteo equilibrado automático al cierre + rectificación manual | ✅ |
+| Sorteo equilibrado automático a la hora del sorteo + rectificación manual | ✅ |
+| Invitados, excepciones del calendario, ausencias, cierre/sorteo configurables, marcador manual (spec 008) | ✅ |
 | Rating Elo público + equilibrio de equipos para gestores | ✅ |
 | Cerrar/reabrir partido, eventos, minutos, estadísticas y ranking | ✅ |
 | Notificaciones push del ciclo de partido + silenciar club | ✅ |
@@ -53,7 +56,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Docker, Flyway, CI (GitHub Actions), health checks | ✅ |
 | **Despliegue** (elegir hosting, registro de imágenes, CD) | ⏳ pendiente |
 
-Calidad: `./gradlew build` ejecuta ~97 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
+Calidad: `./gradlew build` ejecuta ~118 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
 
 ---
 
@@ -207,28 +210,39 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 - Al crear (o reactivar) el horario se planifica **inmediatamente** el primer partido con su convocatoria (abierta ya).
 - Después, cada hora: si el club no tiene un partido programado futuro y no existe partido (ni cancelado) en la siguiente fecha que toca, se crea. Un partido cancelado **no se recrea**. Cambiar el día/hora aplica desde el siguiente partido planificado.
 - Los gestores pueden crear **partidos extra** manuales (fecha futura, formato y duración opcionales) y **cancelar** partidos (no los ya cerrados).
+- **Hora de cierre y hora del sorteo**: `closeDaysBefore` + `closeTime` (defecto 1 día antes a las 22:00) y `drawDaysBefore` + `drawTime` (defecto: igual que el cierre), en hora local del club. El cierre debe ser anterior al inicio y el sorteo igual o posterior al cierre y anterior al inicio; si no → 400. Aplica a los partidos que se planifiquen después del cambio; los partidos extra usan la configuración del horario.
+- **Excepciones del calendario** (una por fecha; las ven todos los miembros, las crean/borran los gestores). `date` es el día de partido de esa semana (debe coincidir con `matchDayOfWeek` y ser futuro):
+  - `CANCELLED`: esa semana no hay partido. Si aún no estaba planificado, la planificación la salta y crea el de la semana siguiente; si ya lo estaba, se cancela como una cancelación normal (push `match.cancelled` a los apuntados) y se planifica la siguiente semana.
+  - `RESCHEDULED` + `newScheduledAt` (futuro): el partido de esa semana se juega en otra fecha/hora. Si ya estaba planificado se **mueve** conservando inscripciones, se recalculan cierre y sorteo (una convocatoria ya cerrada se reabre si el nuevo cierre es futuro) y se avisa a todos los miembros (push `match.rescheduled`).
+  - **Borrar** una excepción la deshace mientras la semana no se haya jugado: un partido cancelado por ella se reactiva con sus inscripciones; uno movido vuelve a su fecha habitual.
+- `MatchDto.scheduleDate` indica a qué semana del horario pertenece un partido (`null` en partidos extra).
 
 ### 7.3 Convocatoria (announcement) y lista de espera
 - `opensAt`: inicio del día siguiente al último partido no cancelado (o "ahora" si no hay o ya pasó).
-- `closesAt`: **22:00 (hora del club) del día anterior al partido**. Si el partido se crea después de ese corte, cierra a la hora del partido.
+- `closesAt`: la **hora de cierre** del horario (por defecto **22:00 del día anterior al partido**, hora del club). Si el partido se crea después de ese corte, cierra a la hora del partido.
+- `drawAt`: la **hora del sorteo** (nunca antes de `closesAt` ni después del inicio).
 - Solo miembros, solo con estado `OPEN` y dentro de `[opensAt, closesAt)`; fuera de la ventana → 400 `BAD_REQUEST`. **Tras el cierre nadie puede apuntarse ni desapuntarse.**
 - Apuntarse: `CONFIRMED` si hay plazas, si no `WAITLISTED` (por orden de inscripción). No dos veces (409).
 - Desapuntarse un confirmado → **el primero en espera pasa a confirmado** automáticamente (y recibe push). Desapuntarse de la espera no promociona a nadie.
 - El estado `status` puede seguir `OPEN` hasta 5 min después de `closesAt` (lo cierra un proceso): **la app debe considerar abierta la convocatoria solo si `status == OPEN && opensAt <= ahora < closesAt`**.
 - Cancelar el partido cancela su convocatoria (`CANCELLED`).
+- **Invitados**: cualquier miembro añade invitados (nombre obligatorio ≤ 80, posición opcional) dentro de la ventana de inscripción, **máximo 2 por miembro** y convocatoria (409). El invitado no depende de que su anfitrión esté apuntado. Los quita quien lo invitó o un gestor (403 si no). **Los miembros tienen prioridad**: las plazas se asignan primero a los miembros por orden de inscripción y después a los invitados por orden de alta; si se apunta un miembro sin hueco, el último invitado confirmado pasa a la espera. La espera se ordena igual (miembros primero). Si el anfitrión sale del club, sus invitados se retiran de las convocatorias abiertas. Los invitados no reciben push y su anfitrión no recibe avisos de sus cambios de estado.
+- **Ausencias**: cada miembro registra periodos `fromDate`–`toDate` (fechas locales del club, hasta 1 año, que acaben hoy o después) y los borra. Al registrarla, se le **desapunta** de las convocatorias **abiertas** de partidos en ese periodo (sube la espera); no recibe la push de apertura ni el recordatorio de esos partidos. La ausencia es informativa: **puede volver a apuntarse** si al final viene. Todos los miembros ven las ausencias del club.
 
 ### 7.4 Equipos
-- Al **cerrarse la convocatoria** se publican **automáticamente** dos equipos con los `CONFIRMED` (la lista de espera no juega). Si un gestor ya había sorteado exactamente con esos jugadores, se respetan.
+- A la **hora del sorteo** (`drawAt`) se publican **automáticamente** dos equipos con los `CONFIRMED`, miembros e **invitados** (la lista de espera no juega). Si un gestor ya había sorteado exactamente con esos participantes, se respetan.
+- Los invitados juegan el sorteo con nivel neutro (1000) y su posición si la indicaron; en `MatchDto` aparecen en `teamAGuests`/`teamBGuests`.
 - Algoritmo: tamaños con diferencia ≤ 1; porteros repartidos; cada posición repartida; se minimiza la diferencia de nivel (rating) con intercambios; con niveles iguales el sorteo es aleatorio.
-- Los gestores pueden **rectificar** en cualquier momento antes de cerrar el partido: `AUTO` (nuevo sorteo) o `MANUAL` (equipos indicados, solo con confirmados, disjuntos, diferencia ≤ 1).
-- Los gestores ven el **equilibrio** de los equipos: rating medio/total por equipo, rating de cada jugador y resultado esperado del equipo A (0–1; 0,5 = igualado).
+- Los gestores pueden **rectificar** en cualquier momento antes de cerrar el partido: `AUTO` (nuevo sorteo) o `MANUAL` (equipos indicados con `clubMemberId` de miembros y/o `guestId` de invitados, solo confirmados, disjuntos, diferencia ≤ 1).
+- Los gestores ven el **equilibrio** de los equipos: rating medio/total por equipo, rating de cada jugador (los invitados con `isGuest = true` y 1000) y resultado esperado del equipo A (0–1; 0,5 = igualado).
 
 ### 7.5 Resultado, minutos, rating y estadísticas
 - El gestor registra **eventos** (gol, asistencia, amarilla, roja; minuto opcional 1–120) solo de jugadores de los equipos y solo con el partido `SCHEDULED`.
 - **Minutos**: cada jugador suma la duración del partido salvo que un gestor fije sus minutos (0–duración) antes de cerrar.
-- **Cerrar** (`complete`): solo `SCHEDULED`, con la hora de inicio pasada y con equipos. El marcador = goles registrados por equipo. Actualiza el rating.
+- **Marcador manual**: el gestor puede fijar el marcador final (`PUT /matches/{id}/score`, 0–99) o quitarlo (`DELETE`) mientras el partido está `SCHEDULED`. Si existe, **es el oficial** (`isManualScore = true`): decide victoria/empate/derrota en rating y estadísticas. Los goles registrados siguen contando para el goleador aunque no cuadren con el marcador (los de invitados solo se reflejan en el marcador).
+- **Cerrar** (`complete`): solo `SCHEDULED`, con la hora de inicio pasada y con equipos. El marcador = el manual si existe; si no, goles registrados por equipo. Actualiza el rating.
 - **Reabrir** (`reopen`): solo el **último** partido cerrado del club; revierte sus cambios de rating y permite corregir eventos y minutos; luego se vuelve a cerrar.
-- **Rating** (Elo): empieza en 1000; sube/baja según el resultado esperado vs real del equipo, la diferencia de goles y la aportación individual (goles, asistencias, tarjetas, suma cero). Provisional hasta 10 partidos. **Público en el club** (clasificación); cada jugador ve su posición.
+- **Rating** (Elo): empieza en 1000; sube/baja según el resultado esperado vs real del equipo, la diferencia de goles y la aportación individual (goles, asistencias, tarjetas, suma cero). Provisional hasta 10 partidos. **Público en el club** (clasificación); cada jugador ve su posición. No hay valoración manual: la "valoración del partido" de cada miembro es su variación de rating, en `MatchDto.ratingChanges` (partidos cerrados). Los invitados cuentan en la media de su equipo con 1000, pero no tienen rating ni estadísticas.
 - **Estadísticas**: partidos, victorias, empates, derrotas, goles, asistencias, amarillas, rojas y minutos, calculadas de los partidos **cerrados**. Clasificación ordenable por `GOALS`, `ASSISTS`, `MATCHES`, `MINUTES`, `WINS`; incluye a todos los miembros (con ceros). Los empates comparten posición (1, 2, 2, 4).
 
 ### 7.6 Notificaciones
@@ -285,20 +299,28 @@ Foto de perfil: `mimeType` ∈ `image/jpeg`, `image/png`, `image/webp`. 1) pedir
 | GET | `/clubs/{clubId}/bans` | gestor | — | `ClubBanDto[]` |
 | POST | `/clubs/{clubId}/members/{memberId}/ban` | gestor (jerarquía) | — | **204** |
 | DELETE | `/clubs/{clubId}/members/{memberId}/ban` | gestor (jerarquía) | — | **204** |
+| GET | `/clubs/{clubId}/absences?from=&to=` | miembro | — | `MemberAbsenceDto[]` (que se solapan con `from`–`to`; ambos opcionales, `YYYY-MM-DD`) |
+| POST | `/clubs/{clubId}/members/me/absences` | miembro | `{fromDate, toDate, reason?}` | **201** `MemberAbsenceDto` |
+| DELETE | `/clubs/{clubId}/members/me/absences/{absenceId}` | miembro (propia) | — | **204** (404 si no es suya) |
 
 ### 8.3 Horario y partidos
 | Método | Ruta | Permiso | Cuerpo | Respuesta |
 |---|---|---|---|---|
 | GET | `/clubs/{clubId}/schedule` | miembro | — | `ClubMatchScheduleDto` (404 si no hay) |
-| POST | `/clubs/{clubId}/schedule` | gestor | `{matchDayOfWeek, matchTime, timeZone?, format?, matchDurationMinutes?}` | **201** `ClubMatchScheduleDto` |
-| PATCH | `/clubs/{clubId}/schedule` | gestor | `{matchDayOfWeek?, matchTime?, timeZone?, format?, matchDurationMinutes?, isActive?}` | `ClubMatchScheduleDto` |
+| POST | `/clubs/{clubId}/schedule` | gestor | `{matchDayOfWeek, matchTime, timeZone?, format?, matchDurationMinutes?, closeDaysBefore?, closeTime?, drawDaysBefore?, drawTime?}` | **201** `ClubMatchScheduleDto` |
+| PATCH | `/clubs/{clubId}/schedule` | gestor | `{matchDayOfWeek?, matchTime?, timeZone?, format?, matchDurationMinutes?, isActive?, closeDaysBefore?, closeTime?, drawDaysBefore?, drawTime?}` | `ClubMatchScheduleDto` |
+| GET | `/clubs/{clubId}/schedule/exceptions` | miembro | — | `ScheduleExceptionDto[]` (por fecha) |
+| POST | `/clubs/{clubId}/schedule/exceptions` | gestor | `{date, type: CANCELLED\|RESCHEDULED, newScheduledAt?, reason?}` | **201** `ScheduleExceptionDto` (409 si la fecha ya tiene una) |
+| DELETE | `/clubs/{clubId}/schedule/exceptions/{exceptionId}` | gestor | — | **204** (409 si la semana ya se jugó) |
 | GET | `/clubs/{clubId}/matches?status=` | miembro | — | `MatchDto[]` (más reciente primero; `status` opcional) |
 | POST | `/clubs/{clubId}/matches` | gestor | `{scheduledAt, format?, durationMinutes?}` | **201** `MatchDto` |
 | GET | `/matches/{matchId}` | miembro | — | `MatchDto` |
 | POST | `/matches/{matchId}/cancel` | gestor | — | `MatchDto` |
+| PUT | `/matches/{matchId}/score` | gestor | `{teamAScore, teamBScore}` | `MatchDto` (solo `SCHEDULED`) |
+| DELETE | `/matches/{matchId}/score` | gestor | — | `MatchDto` (vuelve al marcador de los eventos) |
 | POST | `/matches/{matchId}/complete` | gestor | — | `MatchDto` |
 | POST | `/matches/{matchId}/reopen` | gestor | — | `MatchDto` |
-| POST | `/matches/{matchId}/teams` | gestor | `{mode: AUTO\|MANUAL, manualTeamA?, manualTeamB?}` | `MatchDto` |
+| POST | `/matches/{matchId}/teams` | gestor | `{mode: AUTO\|MANUAL, manualTeamA?, manualTeamB?}` (ids de miembro o de invitado) | `MatchDto` |
 | GET | `/matches/{matchId}/team-balance` | gestor | — | `TeamBalanceDto` (409 sin equipos) |
 | PUT | `/matches/{matchId}/players/{memberId}/minutes` | gestor | `{minutes}` | `MatchDto` |
 | POST | `/matches/{matchId}/events` | gestor | `{clubMemberId, type, minute?}` | **201** `MatchDto` |
@@ -313,6 +335,8 @@ Foto de perfil: `mimeType` ∈ `image/jpeg`, `image/png`, `image/webp`. 1) pedir
 | GET | `/matches/{matchId}/announcement` | miembro | — | `MatchAnnouncementDto` |
 | POST | `/announcements/{announcementId}/enrollment` | miembro | — | `MatchAnnouncementDto` |
 | DELETE | `/announcements/{announcementId}/enrollment` | miembro | — | `MatchAnnouncementDto` |
+| POST | `/announcements/{announcementId}/guests` | miembro | `{name, position?}` | `MatchAnnouncementDto` (409 si ya tiene 2) |
+| DELETE | `/announcements/{announcementId}/guests/{guestId}` | anfitrión o gestor | — | `MatchAnnouncementDto` |
 
 ### 8.5 Rating y estadísticas
 | Método | Ruta | Permiso | Respuesta |
@@ -374,33 +398,49 @@ InvitationCodeDto(invitationCode: String)
 ### Horario y partido
 ```kotlin
 ClubMatchScheduleDto(id, clubId, matchDayOfWeek: DayOfWeek, matchTime: "HH:mm:ss", timeZone: String, format: MatchFormat,
-                     maxPlayers: Int, matchDurationMinutes: Int, isActive: Boolean, createdAt, updatedAt)
+                     maxPlayers: Int, matchDurationMinutes: Int,
+                     closeDaysBefore: Int, closeTime: "HH:mm:ss", drawDaysBefore: Int, drawTime: "HH:mm:ss",
+                     isActive: Boolean, createdAt, updatedAt)
+ScheduleExceptionDto(id, clubId, date: LocalDate, type: ExceptionType, newScheduledAt: Instant?, reason: String?, createdAt)
+MemberAbsenceDto(id, clubId, clubMemberId, fromDate: LocalDate, toDate: LocalDate, reason: String?, createdAt)
 
 MatchDto(
   id, clubId, scheduledAt: Instant, status: MatchStatus,
   enrolledPlayers: List<ClubMemberId>,           // confirmados de la convocatoria
   teamA: List<ClubMemberId>, teamB: List<ClubMemberId>,   // vacíos hasta publicar equipos
   durationMinutes: Int, minutesPlayed: Map<ClubMemberId, Int>,  // minutos efectivos de cada jugador de los equipos
-  teamAScore: Int, teamBScore: Int,
+  enrolledGuests: List<MatchGuestDto>,           // invitados confirmados
+  teamAGuests: List<MatchGuestDto>, teamBGuests: List<MatchGuestDto>,
+  teamAScore: Int, teamBScore: Int,              // marcador oficial: manual si isManualScore, si no goles registrados
+  isManualScore: Boolean,
+  ratingChanges: Map<ClubMemberId, Int>,         // variación de rating de cada miembro (vacío hasta cerrar)
+  scheduleDate: LocalDate?,                      // semana del horario; null en partidos extra
   goals: List<MatchEventDto>, assists: List<MatchEventDto>, yellowCards: List<MatchEventDto>, redCards: List<MatchEventDto>,
   createdAt, updatedAt
 )
+MatchGuestDto(guestId: UUID, name: String, position: PlayerPosition?, invitedByMemberId: ClubMemberId?)
 MatchEventDto(id, matchId, clubMemberId, type: MatchEventType, minute: Int?, createdAt)
 TeamBalanceDto(matchId, teamA: TeamStrengthDto, teamB: TeamStrengthDto, averageRatingDifference: Int, teamAExpectedScore: Double)
 TeamStrengthDto(players: Int, averageRating: Int, totalRating: Int, playerRatings: List<TeamPlayerRatingDto>)  // mayor rating primero
-TeamPlayerRatingDto(clubMemberId, rating: Int)
+TeamPlayerRatingDto(clubMemberId, rating: Int, isGuest: Boolean)   // en invitados clubMemberId = guestId
 ```
 
 ### Convocatoria
 ```kotlin
 MatchAnnouncementDto(
   id, matchId, clubId, maxPlayers: Int, confirmedCount: Int, waitlistCount: Int,
-  opensAt: Instant, closesAt: Instant, status: MatchAnnouncementStatus,
-  entries: List<MatchAnnouncementEntryDto>,   // confirmados, por orden de inscripción
-  waitlist: List<MatchAnnouncementEntryDto>,  // en espera, por orden de promoción
+  opensAt: Instant, closesAt: Instant, drawAt: Instant, status: MatchAnnouncementStatus,
+  entries: List<MatchAnnouncementEntryDto>,   // confirmados: miembros y después invitados, por orden de inscripción
+  waitlist: List<MatchAnnouncementEntryDto>,  // en espera, por orden de promoción (miembros primero)
   createdAt, updatedAt
 )
-MatchAnnouncementEntryDto(id, matchAnnouncementId, clubMemberId, status: EntryStatus, enrolledAt: Instant)
+MatchAnnouncementEntryDto(
+  id,                                  // en invitados es el guestId
+  matchAnnouncementId, participantType: ParticipantType,
+  clubMemberId: ClubMemberId?,         // null en invitados
+  guestName: String?, guestPosition: PlayerPosition?, invitedByMemberId: ClubMemberId?,
+  status: EntryStatus, enrolledAt: Instant
+)
 CurrentMatchAnnouncementDto(announcement: MatchAnnouncementDto, matchScheduledAt: Instant, myStatus: MyEnrollmentStatus, myWaitlistPosition: Int?)
 ```
 
@@ -431,6 +471,11 @@ ClubNotificationSettingsDto(clubId, muted: Boolean)
 | `matchDurationMinutes` / `durationMinutes` | 10–180 |
 | `timeZone` | zona IANA válida (`Europe/Madrid`) |
 | `scheduledAt` (partido manual) | futuro |
+| `closeDaysBefore` / `drawDaysBefore` | 0–6 (y reglas de §7.2) |
+| `AddGuestRequest.name` | obligatorio, ≤ 80 |
+| `teamAScore` / `teamBScore` | 0–99 |
+| `reason` (excepción / ausencia) | ≤ 200 |
+| `fromDate` ≤ `toDate` (ausencia) | `toDate` ≥ hoy; ≤ 1 año |
 | `minute` (evento) | 1–120 |
 | `minutes` (jugador) | 0–duración del partido |
 | `CreateChatRequest.otherUserIds` | ≥ 1 (chat de ≥ 2 participantes) |
@@ -467,6 +512,8 @@ ClubNotificationSettingsDto(clubId, muted: Boolean)
 | `MatchStatus` | `SCHEDULED`, `IN_PROGRESS` (no se usa), `COMPLETED`, `CANCELLED` |
 | `MatchAnnouncementStatus` | `OPEN`, `CLOSED`, `CANCELLED` |
 | `EntryStatus` | `CONFIRMED`, `WAITLISTED` |
+| `ParticipantType` | `MEMBER`, `GUEST` |
+| `ExceptionType` | `CANCELLED`, `RESCHEDULED` |
 | `MyEnrollmentStatus` | `NOT_ENROLLED`, `CONFIRMED`, `WAITLISTED` |
 | `MatchEventType` | `GOAL`, `ASSIST`, `YELLOW_CARD`, `RED_CARD` |
 | `TeamGenerationMode` | `AUTO`, `MANUAL` |
@@ -552,10 +599,11 @@ Cada push lleva `notification` (`title`, `body`, en español, fechas en la zona 
 
 | `data.type` | Cuándo | Destinatarios | `data` adicional | Ejemplo de texto |
 |---|---|---|---|---|
-| `match.announcement.opened` | Se abre la convocatoria | Todos los miembros | `clubId`, `matchId`, `announcementId` | "Squadfy FC: convocatoria abierta" / "Partido el jueves 15 de octubre a las 20:00. ¡Apúntate!" |
-| `match.announcement.closing_soon` | 24 h antes del cierre, si quedan plazas (no si abrió en esas 24 h) | Miembros no apuntados | `clubId`, `matchId`, `announcementId` | "Squadfy FC: quedan 3 plazas" / "La convocatoria cierra el miércoles 14 a las 22:00. …" |
-| `match.teams.published` | Equipos publicados al cierre o tras rectificar | Jugadores de los equipos | `clubId`, `matchId`, `team` (`A`/`B`) | "Squadfy FC: equipos publicados" / "Juegas en el equipo A · …" |
-| `match.cancelled` | Partido cancelado | Apuntados (confirmados y espera) | `clubId`, `matchId` | "Squadfy FC: partido cancelado" |
+| `match.announcement.opened` | Se abre la convocatoria | Todos los miembros salvo los ausentes ese día | `clubId`, `matchId`, `announcementId` | "Squadfy FC: convocatoria abierta" / "Partido el jueves 15 de octubre a las 20:00. ¡Apúntate!" |
+| `match.announcement.closing_soon` | 24 h antes del cierre, si quedan plazas (no si abrió en esas 24 h) | Miembros no apuntados ni ausentes | `clubId`, `matchId`, `announcementId` | "Squadfy FC: quedan 3 plazas" / "La convocatoria cierra el miércoles 14 a las 22:00. …" |
+| `match.teams.published` | Equipos publicados a la hora del sorteo o tras rectificar | Jugadores de los equipos | `clubId`, `matchId`, `team` (`A`/`B`) | "Squadfy FC: equipos publicados" / "Juegas en el equipo A · …" |
+| `match.cancelled` | Partido cancelado (también por una excepción) | Apuntados (confirmados y espera) | `clubId`, `matchId` | "Squadfy FC: partido cancelado" |
+| `match.rescheduled` | Partido movido por una excepción (o devuelto a su fecha al borrarla) | Todos los miembros | `clubId`, `matchId` | "Squadfy FC: partido cambiado" / "El partido del jueves 8 de octubre a las 20:00 pasa al viernes 9 de octubre a las 21:00." |
 | `match.waitlist.promoted` | Pasas de la espera a confirmado | El promocionado (**aunque haya silenciado el club**) | `clubId`, `matchId`, `announcementId` | "Squadfy FC: ¡tienes plaza!" |
 | `new_message` | Mensaje de chat | Participantes salvo el remitente | `chatId` | título = nombre del remitente, cuerpo = mensaje |
 
@@ -580,9 +628,11 @@ Apertura y recordatorio se envían **una sola vez** por convocatoria. Silenciar 
 | Reset de contraseña | `POST /auth/forgot-password`; deep link `squadfy://reset-password?token=` → `POST /auth/reset-password` |
 | Mis clubes | `GET /clubs`; crear `POST /clubs`; unirse `POST /clubs/join` (manejar 400 código inválido, 403 vetado, 409 ya miembro/lleno) |
 | Inicio del club | `GET /clubs/{id}/announcements/current` (404 = sin partido programado) + `GET /clubs/{id}/members` para nombres. Botón apuntarse/desapuntarse según `myStatus` y si está abierta (`status == OPEN && opensAt <= now < closesAt`); mostrar "estás en espera (n.º X)" |
-| Detalle de partido | `GET /matches/{id}` (equipos, marcador, eventos, minutos) |
-| Gestión del partido (gestores) | `POST /matches/{id}/teams` (AUTO/MANUAL), `GET /matches/{id}/team-balance`, eventos, `PUT .../minutes`, `POST .../complete`, `POST .../reopen`, `POST .../cancel` |
-| Horario (gestores) | `GET/POST/PATCH /clubs/{id}/schedule` |
+| Invitados | En la convocatoria: `POST /announcements/{id}/guests` y `DELETE .../guests/{guestId}`; mostrar `entries`/`waitlist` con `participantType` (nombre del invitado = `guestName`) |
+| Detalle de partido | `GET /matches/{id}` (equipos con invitados, marcador oficial, eventos, minutos, `ratingChanges` como "valoración del partido") |
+| Gestión del partido (gestores) | `POST /matches/{id}/teams` (AUTO/MANUAL), `GET /matches/{id}/team-balance`, eventos, `PUT .../minutes`, `PUT/DELETE .../score`, `POST .../complete`, `POST .../reopen`, `POST .../cancel` |
+| Horario (gestores) | `GET/POST/PATCH /clubs/{id}/schedule` (incluye hora de cierre y de sorteo); excepciones `GET/POST/DELETE /clubs/{id}/schedule/exceptions` |
+| Ausencias | `GET /clubs/{id}/absences?from=&to=`; las mías: `POST/DELETE /clubs/{id}/members/me/absences` |
 | Miembros y roles | `GET /clubs/{id}/members`; gestores: rol, expulsar, vetar, `GET /clubs/{id}/bans`; owner: transferir; todos: `PATCH /members/me`, salir |
 | Clasificaciones | `GET /clubs/{id}/ratings`, `/ratings/me`, `GET /clubs/{id}/stats?sortBy=…`, `/stats/me` (cruzar `clubMemberId` con miembros) |
 | Ajustes del club | `GET/PUT /clubs/{id}/notification-settings`; gestores: `PATCH /clubs/{id}`, logo, regenerar código |
@@ -612,6 +662,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 8. **Errores**: 403 `NOT_CLUB_MEMBER` (antes 400); creaciones devuelven **201**; salir/expulsar/vetar devuelven **204**.
 9. **Reset de contraseña** vía deep link `squadfy://reset-password?token=`.
 10. **Push de chat**: el título es ahora el nombre del remitente.
+11. **Spec 008 (paridad con la app)**: invitados en la convocatoria (entradas con `participantType`), excepciones del calendario, ausencias, `closeTime`/`drawTime` configurables (`drawAt` en la convocatoria), marcador manual oficial y `ratingChanges` por partido. **Se retira la valoración manual** (el nivel es el rating automático). La foto por club queda en backlog.
 
 ---
 
@@ -627,6 +678,8 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 | Dispositivos | `DELETE /devices/{token}` no comprueba que el token sea del usuario (riesgo bajo: hay que conocer el token FCM) |
 | Búsqueda de usuarios | `GET /users?query=` busca coincidencia exacta de username o email |
 | Estadísticas | Sin filtros por temporada/fechas |
+| Foto por club | En backlog (spec 008): la foto es la del perfil del usuario |
+| Configuración de cierre/sorteo | Un cambio en el horario aplica a los partidos planificados después; la convocatoria ya abierta mantiene sus horas |
 | Deuda técnica | RabbitMQ y Redis aún serializan con Jackson 2; *open-in-view* activo; algún aviso de deprecación |
 
 Documentos relacionados: [`specs/README.md`](../specs/README.md) (specs por funcionalidad, SDD) · [`docs/api/migracion-v1.md`](api/migracion-v1.md) (migración de la app) · [`README.md`](../README.md).

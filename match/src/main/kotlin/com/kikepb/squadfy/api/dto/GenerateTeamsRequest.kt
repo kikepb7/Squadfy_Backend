@@ -1,11 +1,12 @@
 package com.kikepb.squadfy.api.dto
 
-import com.kikepb.squadfy.domain.type.ClubMemberId
+import java.util.UUID
 
 data class GenerateTeamsRequest(
     val mode: TeamGenerationModeDto = TeamGenerationModeDto.AUTO,
-    val manualTeamA: List<ClubMemberId>? = null,
-    val manualTeamB: List<ClubMemberId>? = null
+    /** Member ids or guest ids of the confirmed participants (MANUAL mode). */
+    val manualTeamA: List<UUID>? = null,
+    val manualTeamB: List<UUID>? = null
 )
 
 enum class TeamGenerationModeDto {

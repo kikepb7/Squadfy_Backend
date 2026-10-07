@@ -25,8 +25,18 @@ class MatchNotificationPublisher(
     private val eventPublisher: EventPublisher
 ) {
 
-    fun announcementOpened(clubId: ClubId, matchId: MatchId, matchScheduledAt: Instant, announcementId: MatchAnnouncementId, closesAt: Instant) {
-        val recipients = clubMembershipProvider.findAllMembers(clubId = clubId).map { it.userId }
+    /** [absentMemberIds]: members absent on the match date do not get the opening push (spec 008 RN-C3). */
+    fun announcementOpened(
+        clubId: ClubId,
+        matchId: MatchId,
+        matchScheduledAt: Instant,
+        announcementId: MatchAnnouncementId,
+        closesAt: Instant,
+        absentMemberIds: Set<ClubMemberId> = emptySet()
+    ) {
+        val recipients = clubMembershipProvider.findAllMembers(clubId = clubId)
+            .filterNot { it.memberId in absentMemberIds }
+            .map { it.userId }
         if (recipients.isEmpty()) return
 
         eventPublisher.publishAfterCommit(
@@ -50,10 +60,11 @@ class MatchNotificationPublisher(
         announcementId: MatchAnnouncementId,
         closesAt: Instant,
         freePlaces: Int,
-        enrolledMemberIds: Set<ClubMemberId>
+        enrolledMemberIds: Set<ClubMemberId>,
+        absentMemberIds: Set<ClubMemberId> = emptySet()
     ) {
         val recipients = clubMembershipProvider.findAllMembers(clubId = clubId)
-            .filterNot { it.memberId in enrolledMemberIds }
+            .filterNot { it.memberId in enrolledMemberIds || it.memberId in absentMemberIds }
             .map { it.userId }
         if (recipients.isEmpty()) return
 
@@ -98,6 +109,24 @@ class MatchNotificationPublisher(
                 matchId = matchId,
                 matchScheduledAt = matchScheduledAt,
                 timeZone = timeZone(clubId),
+                recipientUserIds = recipients
+            )
+        )
+    }
+
+    /** Every member of the club is told about the new date (spec 008 RN-B3). */
+    fun matchRescheduled(clubId: ClubId, matchId: MatchId, previousScheduledAt: Instant, newScheduledAt: Instant) {
+        val recipients = clubMembershipProvider.findAllMembers(clubId = clubId).map { it.userId }
+        if (recipients.isEmpty()) return
+
+        eventPublisher.publishAfterCommit(
+            MatchEvent.MatchRescheduled(
+                clubId = clubId,
+                clubName = clubName(clubId),
+                matchId = matchId,
+                matchScheduledAt = newScheduledAt,
+                timeZone = timeZone(clubId),
+                previousScheduledAt = previousScheduledAt,
                 recipientUserIds = recipients
             )
         )

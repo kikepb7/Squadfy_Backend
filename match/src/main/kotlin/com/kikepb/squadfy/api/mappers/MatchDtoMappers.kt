@@ -8,6 +8,9 @@ import com.kikepb.squadfy.api.dto.PlayerStatsDto
 import com.kikepb.squadfy.api.dto.CurrentMatchAnnouncementDto
 import com.kikepb.squadfy.api.dto.MatchDto
 import com.kikepb.squadfy.api.dto.MatchEventDto
+import com.kikepb.squadfy.api.dto.MatchGuestDto
+import com.kikepb.squadfy.api.dto.MemberAbsenceDto
+import com.kikepb.squadfy.api.dto.ScheduleExceptionDto
 import com.kikepb.squadfy.api.dto.PlayerRatingDto
 import com.kikepb.squadfy.api.dto.RatingLeaderboardEntryDto
 import com.kikepb.squadfy.api.dto.TeamBalanceDto
@@ -22,7 +25,10 @@ import com.kikepb.squadfy.domain.model.MatchEventType.ASSIST
 import com.kikepb.squadfy.domain.model.MatchEventType.GOAL
 import com.kikepb.squadfy.domain.model.MatchEventType.RED_CARD
 import com.kikepb.squadfy.domain.model.MatchEventType.YELLOW_CARD
+import com.kikepb.squadfy.domain.model.MatchGuestModel
 import com.kikepb.squadfy.domain.model.MatchModel
+import com.kikepb.squadfy.domain.model.MemberAbsenceModel
+import com.kikepb.squadfy.domain.model.ScheduleExceptionModel
 import com.kikepb.squadfy.domain.model.PlayerRatingModel
 import com.kikepb.squadfy.domain.model.PlayerStatsModel
 import com.kikepb.squadfy.domain.model.StatsLeaderboard
@@ -40,6 +46,12 @@ fun MatchModel.toMatchDto(): MatchDto = MatchDto(
     teamB = teamB,
     durationMinutes = durationMinutes,
     minutesPlayed = minutesPlayed,
+    enrolledGuests = enrolledGuests.map { it.toMatchGuestDto() },
+    teamAGuests = teamAGuests.map { it.toMatchGuestDto() },
+    teamBGuests = teamBGuests.map { it.toMatchGuestDto() },
+    isManualScore = isManualScore,
+    ratingChanges = ratingChanges.mapValues { (_, delta) -> delta.roundToInt() },
+    scheduleDate = scheduleDate,
     teamAScore = teamAScore,
     teamBScore = teamBScore,
     goals = events.filter { it.type == GOAL }.map { it.toMatchEventDto() },
@@ -68,6 +80,10 @@ fun ClubMatchScheduleModel.toClubMatchScheduleDto(): ClubMatchScheduleDto = Club
     format = format,
     maxPlayers = maxPlayers,
     matchDurationMinutes = matchDurationMinutes,
+    closeDaysBefore = close.daysBefore,
+    closeTime = close.time,
+    drawDaysBefore = draw.daysBefore,
+    drawTime = draw.time,
     isActive = isActive,
     createdAt = createdAt,
     updatedAt = updatedAt
@@ -82,6 +98,7 @@ fun MatchAnnouncementModel.toMatchAnnouncementDto(): MatchAnnouncementDto = Matc
     waitlistCount = waitlistEntries.size,
     opensAt = opensAt,
     closesAt = closesAt,
+    drawAt = drawAt,
     status = status,
     entries = confirmedEntries.map { it.toMatchAnnouncementEntryDto() },
     waitlist = waitlistEntries.map { it.toMatchAnnouncementEntryDto() },
@@ -92,7 +109,11 @@ fun MatchAnnouncementModel.toMatchAnnouncementDto(): MatchAnnouncementDto = Matc
 fun MatchAnnouncementEntryModel.toMatchAnnouncementEntryDto(): MatchAnnouncementEntryDto = MatchAnnouncementEntryDto(
     id = id,
     matchAnnouncementId = matchAnnouncementId,
+    participantType = participantType,
     clubMemberId = clubMemberId,
+    guestName = guestName,
+    guestPosition = guestPosition,
+    invitedByMemberId = invitedByMemberId,
     status = status,
     enrolledAt = enrolledAt
 )
@@ -127,7 +148,7 @@ private fun TeamBalanceModel.TeamStrength.toTeamStrengthDto(): TeamStrengthDto =
     players = players,
     averageRating = averageRating.roundToInt(),
     totalRating = totalRating.roundToInt(),
-    playerRatings = playerRatings.map { TeamPlayerRatingDto(clubMemberId = it.clubMemberId, rating = it.rating.roundToInt()) }
+    playerRatings = playerRatings.map { TeamPlayerRatingDto(clubMemberId = it.clubMemberId, rating = it.rating.roundToInt(), isGuest = it.isGuest) }
 )
 
 fun CurrentMatchAnnouncementModel.toCurrentMatchAnnouncementDto(): CurrentMatchAnnouncementDto = CurrentMatchAnnouncementDto(
@@ -162,4 +183,31 @@ fun StatsLeaderboard.RankedStats.toClubStatsEntryDto(): ClubStatsEntryDto = Club
     yellowCards = stats.yellowCards,
     redCards = stats.redCards,
     minutesPlayed = stats.minutesPlayed
+)
+
+fun MatchGuestModel.toMatchGuestDto(): MatchGuestDto = MatchGuestDto(
+    guestId = guestId,
+    name = name,
+    position = position,
+    invitedByMemberId = invitedByMemberId
+)
+
+fun ScheduleExceptionModel.toScheduleExceptionDto(): ScheduleExceptionDto = ScheduleExceptionDto(
+    id = id,
+    clubId = clubId,
+    date = scheduleDate,
+    type = type,
+    newScheduledAt = newScheduledAt,
+    reason = reason,
+    createdAt = createdAt
+)
+
+fun MemberAbsenceModel.toMemberAbsenceDto(): MemberAbsenceDto = MemberAbsenceDto(
+    id = id,
+    clubId = clubId,
+    clubMemberId = clubMemberId,
+    fromDate = fromDate,
+    toDate = toDate,
+    reason = reason,
+    createdAt = createdAt
 )

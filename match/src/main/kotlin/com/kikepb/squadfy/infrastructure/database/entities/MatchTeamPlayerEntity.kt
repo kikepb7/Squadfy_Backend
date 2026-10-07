@@ -15,6 +15,7 @@ import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(
@@ -37,8 +38,12 @@ class MatchTeamPlayerEntity(
     var id: MatchTeamPlayerId? = null,
     @Column(name = "match_id", nullable = false, updatable = false)
     var matchId: MatchId,
-    @Column(name = "club_member_id", nullable = false, updatable = false)
-    var clubMemberId: ClubMemberId,
+    /** Null for guests (then [guestEntryId] is set). */
+    @Column(name = "club_member_id", updatable = false)
+    var clubMemberId: ClubMemberId? = null,
+    /** Announcement entry id of a guest player (spec 008 RN-A6). */
+    @Column(name = "guest_entry_id", updatable = false)
+    var guestEntryId: UUID? = null,
     @Enumerated(EnumType.STRING)
     @Column(name = "team_side", nullable = false)
     var teamSide: TeamSideEntity,

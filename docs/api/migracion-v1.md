@@ -54,6 +54,10 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 | — | `GET /api/v1/clubs/{clubId}/stats?sortBy=GOALS\|ASSISTS\|MATCHES\|MINUTES\|WINS` (clasificación de estadísticas) |
 | — | `GET /api/v1/clubs/{clubId}/stats/me` |
 | — | `PUT /api/v1/matches/{matchId}/players/{memberId}/minutes` `{minutes}` (gestores, antes de cerrar) |
+| — | `POST /api/v1/announcements/{id}/guests` `{name, position?}` / `DELETE /api/v1/announcements/{id}/guests/{guestId}` (invitados) |
+| — | `GET / POST /api/v1/clubs/{clubId}/schedule/exceptions`, `DELETE .../exceptions/{exceptionId}` (excepciones del calendario) |
+| — | `GET /api/v1/clubs/{clubId}/absences?from=&to=`, `POST / DELETE /api/v1/clubs/{clubId}/members/me/absences[/{absenceId}]` (ausencias) |
+| — | `PUT / DELETE /api/v1/matches/{matchId}/score` `{teamAScore, teamBScore}` (marcador manual, gestores) |
 | `GET /api/chat` | `GET /api/v1/chats` |
 | `POST /api/chat/create-chat` | `POST /api/v1/chats` → **201** |
 | `GET /api/chat/{chatId}`, `GET /api/chat/{chatId}/messages?before=&pageSize=` | `GET /api/v1/chats/{chatId}`, `GET /api/v1/chats/{chatId}/messages?before=&pageSize=` |
@@ -77,13 +81,15 @@ Guía para actualizar la app al contrato de la [spec 007](../../specs/007-api-co
 - **Ratings** (nuevo): clasificación `[{ rank, clubMemberId, rating, matchesRated, isProvisional }]`; `/me` añade `rank` y `totalPlayers`. Nombre y foto se cruzan con `/clubs/{clubId}/members`.
 - **Equilibrio de equipos** (gestores): `teamA/teamB.playerRatings` con el rating de cada jugador.
 - **Membresía**: quien sale o es expulsado deja de verse en el club y sale de las convocatorias abiertas (su plaza pasa a la lista de espera). Si vuelve a unirse con el código conserva su `clubMemberId` y su rating, con rol `PLAYER`. Un usuario **vetado** recibe 403 `BANNED_FROM_CLUB` al intentar unirse hasta que un gestor levante el veto.
+- **Invitados, excepciones, cierre/sorteo y marcador (spec 008)**: el horario añade `closeDaysBefore`, `closeTime`, `drawDaysBefore`, `drawTime` (por defecto 1 día antes a las 22:00 ambos); la convocatoria añade `drawAt` (hora del sorteo; los equipos se publican entonces, no al cierre) y sus entradas `participantType` (`MEMBER | GUEST`), `guestName`, `guestPosition`, `invitedByMemberId` (`clubMemberId` es `null` en invitados y el `id` de la entrada es el `guestId`). `MatchDto` añade `enrolledGuests`, `teamAGuests`, `teamBGuests` (`{guestId, name, position, invitedByMemberId}`), `isManualScore`, `ratingChanges` (`clubMemberId → variación de rating`) y `scheduleDate`. El sorteo manual acepta ids de invitados. `TeamPlayerRatingDto` añade `isGuest`. **No hay valoración manual**: el nivel es el rating automático. La foto por club queda en backlog.
 - **Privacidad**: `email` desaparece de los miembros del club y de los participantes/usuarios de chat. El propio email está en `GET /api/v1/me`.
 
 ## 3. Comportamiento y errores
 
 - Errores: `{ "code", "message" }`; validación `{ "code": "VALIDATION_ERROR", "errors": [...] }`.
 - 403 `NOT_CLUB_MEMBER` (antes 400) al operar sobre un club del que no eres miembro; 403 `FORBIDDEN` si no eres gestor (OWNER/ADMIN).
-- Creaciones (`clubs`, `schedule`, `matches`, `chats`, `devices`, `events`) responden **201**.
+- Creaciones (`clubs`, `schedule`, `matches`, `chats`, `devices`, `events`, excepciones, ausencias) responden **201**; borrar excepciones y ausencias, **204**.
+- Invitados: 409 al añadir un tercero del mismo miembro; 403 si quien lo quita no es el anfitrión ni gestor; 404 si no existe.
 - **Restablecer contraseña**: el email abre `RESET_PASSWORD_URL?token=...` (por defecto el deep link `squadfy://reset-password?token=...`). La app debe capturar ese enlace, pedir la nueva contraseña y llamar a `POST /api/v1/auth/reset-password` con `{ token, newPassword }`.
 
 ## 4. Notificaciones push
@@ -92,10 +98,11 @@ Solo push (Firebase). La app debe registrar el dispositivo con `POST /api/v1/dev
 
 | `type` | Cuándo | Destinatarios | `data` adicional |
 |---|---|---|---|
-| `match.announcement.opened` | Se abre la convocatoria | Todos los miembros | `clubId`, `matchId`, `announcementId` |
-| `match.announcement.closing_soon` | 24 h antes del cierre, si quedan plazas | Miembros no apuntados | `clubId`, `matchId`, `announcementId` |
-| `match.teams.published` | Equipos publicados (al cierre o al rectificar) | Jugadores de los equipos | `clubId`, `matchId`, `team` (`A`/`B`) |
+| `match.announcement.opened` | Se abre la convocatoria | Todos los miembros (salvo ausentes ese día) | `clubId`, `matchId`, `announcementId` |
+| `match.announcement.closing_soon` | 24 h antes del cierre, si quedan plazas | Miembros no apuntados ni ausentes | `clubId`, `matchId`, `announcementId` |
+| `match.teams.published` | Equipos publicados (a la hora del sorteo o al rectificar) | Jugadores de los equipos | `clubId`, `matchId`, `team` (`A`/`B`) |
 | `match.cancelled` | Partido cancelado | Apuntados | `clubId`, `matchId` |
+| `match.rescheduled` | Partido movido por una excepción del calendario | Todos los miembros | `clubId`, `matchId` |
 | `match.waitlist.promoted` | Pasas de la lista de espera a convocado | El jugador promocionado | `clubId`, `matchId`, `announcementId` |
 | `new_message` | Mensaje de chat | Participantes del chat | `chatId` |
 

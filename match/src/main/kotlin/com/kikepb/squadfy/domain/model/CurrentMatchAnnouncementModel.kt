@@ -22,7 +22,6 @@ data class CurrentMatchAnnouncementModel(
         fun of(announcement: MatchAnnouncementModel, matchScheduledAt: Instant, memberId: ClubMemberId): CurrentMatchAnnouncementModel {
             val myEntry = announcement.entries.firstOrNull { it.clubMemberId == memberId }
             val waitlistPosition = announcement.waitlistEntries
-                .sortedBy { it.enrolledAt }
                 .indexOfFirst { it.clubMemberId == memberId }
                 .takeIf { it >= 0 }
                 ?.plus(1)

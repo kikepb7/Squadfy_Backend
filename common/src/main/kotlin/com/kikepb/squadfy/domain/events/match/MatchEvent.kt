@@ -74,6 +74,19 @@ sealed class MatchEvent(
         override val eventKey: String = MatchEventConstants.MATCH_CANCELLED
     ) : MatchEvent()
 
+    /** The match of a week was moved by a schedule exception (spec 008 RN-B3); [matchScheduledAt] is the new time. */
+    data class MatchRescheduled(
+        override val clubId: ClubId,
+        override val clubName: String,
+        override val matchId: MatchId,
+        override val matchScheduledAt: Instant,
+        override val timeZone: String,
+        @JsonSerialize(using = InstantToStringSerializer::class)
+        val previousScheduledAt: Instant,
+        val recipientUserIds: List<UserId>,
+        override val eventKey: String = MatchEventConstants.MATCH_RESCHEDULED
+    ) : MatchEvent()
+
     data class PromotedFromWaitlist(
         override val clubId: ClubId,
         override val clubName: String,

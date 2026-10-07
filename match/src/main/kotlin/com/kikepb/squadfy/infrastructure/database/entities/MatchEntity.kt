@@ -16,6 +16,7 @@ import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.Instant
+import java.time.LocalDate
 
 @Entity
 @Table(
@@ -39,6 +40,14 @@ class MatchEntity(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: MatchStatus = SCHEDULED,
+    /** Local date of the weekly schedule occurrence this match belongs to; null for extra matches. */
+    @Column(name = "schedule_date")
+    var scheduleDate: LocalDate? = null,
+    /** Manual final score set by a manager; when present it is the official result (spec 008 RN-E2). */
+    @Column(name = "team_a_score")
+    var manualTeamAScore: Int? = null,
+    @Column(name = "team_b_score")
+    var manualTeamBScore: Int? = null,
     @Column(name = "duration_minutes", nullable = false)
     var durationMinutes: Int = DEFAULT_MATCH_DURATION_MINUTES,
     @CreationTimestamp

@@ -14,6 +14,8 @@ import kotlin.math.pow
  * - Individual component: zero-sum within the match, rewards goals and assists and penalises cards
  *   relative to the match average, so ratings do not inflate over time.
  * - New players move faster (provisional K) until their rating stabilises.
+ * - Guests (spec 008 RN-A6) count in the team average with [INITIAL_RATING] but get no delta and
+ *   do not take part in the individual component.
  */
 object PlayerRatingCalculator {
 
@@ -40,11 +42,14 @@ object PlayerRatingCalculator {
         teamA: List<RatedPlayer>,
         teamB: List<RatedPlayer>,
         goalsA: Int,
-        goalsB: Int
+        goalsB: Int,
+        guestsA: Int = 0,
+        guestsB: Int = 0
     ): Map<ClubMemberId, Double> {
-        require(teamA.isNotEmpty() && teamB.isNotEmpty()) { "Both teams need players" }
+        require(teamA.size + guestsA > 0 && teamB.size + guestsB > 0) { "Both teams need players" }
+        if (teamA.isEmpty() && teamB.isEmpty()) return emptyMap()
 
-        val expectedA = expectedScore(teamA.map { it.rating }.average(), teamB.map { it.rating }.average())
+        val expectedA = expectedScore(teamAverage(teamA, guestsA), teamAverage(teamB, guestsB))
         val actualA = when {
             goalsA > goalsB -> 1.0
             goalsA < goalsB -> 0.0
@@ -61,6 +66,9 @@ object PlayerRatingCalculator {
 
     fun expectedScore(ratingA: Double, ratingB: Double): Double =
         1.0 / (1.0 + 10.0.pow((ratingB - ratingA) / ELO_SCALE))
+
+    private fun teamAverage(members: List<RatedPlayer>, guests: Int): Double =
+        (members.sumOf { it.rating } + guests * INITIAL_RATING) / (members.size + guests)
 
     private fun kFactor(player: RatedPlayer): Double =
         BASE_K + PROVISIONAL_EXTRA_K * max(0.0, 1.0 - player.matchesRated.toDouble() / PROVISIONAL_MATCHES)

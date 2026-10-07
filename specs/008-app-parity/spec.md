@@ -1,6 +1,6 @@
 # 008 — Funcionalidades de la app: invitados, excepciones, horarios de cierre y sorteo, marcador manual
 
-- **Estado**: Borrador — pendiente de confirmar las decisiones marcadas con ⚠️
+- **Estado**: Implementada (2026-10-07) — decisiones ⚠️ aplicadas por defecto, revisables
 - **Módulos**: match (principal), notification, common
 - **Dependencias**: 002, 003, 004, 005
 
@@ -100,8 +100,13 @@ Cambios en DTOs existentes:
 - Invitados recurrentes o con cuenta propia.
 - Ausencias que afecten a otros clubes del mismo usuario (son por club).
 
-## Preguntas abiertas (decisiones por defecto marcadas con ⚠️)
-- [ ] RN-A4: ¿máximo 2 invitados por miembro y convocatoria?
-- [ ] RN-A5: ¿el invitado se mantiene aunque su anfitrión no esté apuntado?
-- [ ] RN-A7: ¿sin push para cambios de estado de invitados?
-- [ ] RN-C4: ¿se puede apuntar durante una ausencia?
+## Decisiones por defecto (⚠️), aplicadas y revisables
+- [x] RN-A4: máximo 2 invitados por miembro y convocatoria (`MAX_GUESTS_PER_MEMBER`).
+- [x] RN-A5: el invitado se mantiene aunque su anfitrión no esté apuntado; sale si el anfitrión deja el club.
+- [x] RN-A7: sin push para cambios de estado de invitados.
+- [x] RN-C4: se puede apuntar durante una ausencia.
+
+## Notas de implementación
+- Un cambio de cierre/sorteo en el horario aplica a los partidos planificados después; la convocatoria ya creada conserva sus horas.
+- Al deshacer una semana cancelada que aún no tenía partido, se planifica en el momento si es anterior a todos los partidos programados; si no, la planificación la alcanza sola.
+- Ausencias: hasta 1 año y deben acabar hoy o después.

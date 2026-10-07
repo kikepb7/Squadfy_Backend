@@ -78,4 +78,17 @@ class MatchNotificationMessagesTest {
         assertEquals(1, pushes.size)
         assertEquals("Squadfy: equipos publicados", pushes.single().title)
     }
+
+    @Test
+    fun `rescheduled push tells the previous and the new date`() {
+        val previous = Instant.parse("2026-10-08T18:00:00Z")
+        val push = MatchNotificationMessages.of(
+            MatchEvent.MatchRescheduled(clubId, "Squadfy FC", matchId, kickoff, "Europe/Madrid", previous, users)
+        ).single()
+
+        assertEquals("Squadfy FC: partido cambiado", push.title)
+        assertEquals("El partido del jueves 8 de octubre a las 20:00 pasa al jueves 15 de octubre a las 20:00.", push.body)
+        assertEquals("match.rescheduled", push.data["type"])
+        assertFalse(MatchNotificationMessages.ignoresMute(MatchEvent.MatchRescheduled(clubId, "Squadfy FC", matchId, kickoff, "Europe/Madrid", previous, users)))
+    }
 }

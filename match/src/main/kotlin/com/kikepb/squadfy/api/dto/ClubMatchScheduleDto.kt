@@ -16,6 +16,10 @@ data class ClubMatchScheduleDto(
     val format: MatchFormat,
     val maxPlayers: Int,
     val matchDurationMinutes: Int,
+    val closeDaysBefore: Int,
+    val closeTime: LocalTime,
+    val drawDaysBefore: Int,
+    val drawTime: LocalTime,
     val isActive: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant

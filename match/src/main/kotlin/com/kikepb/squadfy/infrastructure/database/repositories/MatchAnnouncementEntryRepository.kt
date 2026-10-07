@@ -23,6 +23,13 @@ interface MatchAnnouncementEntryRepository : JpaRepository<MatchAnnouncementEntr
         clubMemberId: ClubMemberId
     ): Boolean
 
+    fun countByMatchAnnouncementIdAndInvitedByMemberId(matchAnnouncementId: MatchAnnouncementId, invitedByMemberId: ClubMemberId): Int
+
+    fun findAllByMatchAnnouncementIdAndInvitedByMemberId(
+        matchAnnouncementId: MatchAnnouncementId,
+        invitedByMemberId: ClubMemberId
+    ): List<MatchAnnouncementEntryEntity>
+
     fun countByMatchAnnouncementIdAndStatus(matchAnnouncementId: MatchAnnouncementId, status: EntryStatus): Int
 
     fun findFirstByMatchAnnouncementIdAndStatusOrderByEnrolledAtAsc(

@@ -22,6 +22,8 @@ data class TeamStrengthDto(
 )
 
 data class TeamPlayerRatingDto(
+    /** Member id, or the guestId when [isGuest] (guests always have the neutral rating). */
     val clubMemberId: ClubMemberId,
-    val rating: Int
+    val rating: Int,
+    val isGuest: Boolean
 )
