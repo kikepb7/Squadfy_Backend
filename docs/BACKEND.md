@@ -179,6 +179,7 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 ### Flujos
 1. **Registro**: `POST /auth/register {email, username, password}` → `UserDto` con `hasVerifiedEmail=false`. Se envía un email con un enlace `GET {APP_PUBLIC_URL}/api/v1/auth/verify?token=...` (24 h de validez; al abrirlo en el navegador responde 200 sin contenido).
 2. **Login**: `POST /auth/login {email, password}` → `{user, accessToken, refreshToken}`. Si el email no está verificado → **403 `EMAIL_NOT_VERIFIED`** (ofrecer "reenviar email": `POST /auth/resend-verification {email}`).
+   - **App config (spec 009)**: con `EMAIL_VERIFICATION_ENABLED=false` (`squadfy.app-config.email-verification.enabled`), el registro deja al usuario verificado sin enviar correo y el login no exige verificación. Es solo para pruebas locales o de QA; en el perfil `prod` está fijado a `true`.
 3. **Refresh**: `POST /auth/refresh {refreshToken}` → nuevo par de tokens. Token inválido/caducado/ya usado → **401 `INVALID_TOKEN`** (mandar al login).
 4. **Logout**: `POST /auth/logout {refreshToken}` (y `DELETE /devices/{token}` para dejar de recibir push).
 5. **Olvidé la contraseña**: `POST /auth/forgot-password {email}` (responde 200 aunque el email no exista). El email abre `RESET_PASSWORD_URL?token=...` (por defecto el deep link **`squadfy://reset-password?token=...`**, 30 min de validez). La app captura el deep link, pide la nueva contraseña y llama `POST /auth/reset-password {token, newPassword}`.

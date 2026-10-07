@@ -1,6 +1,10 @@
 # Production: behind a reverse proxy (nginx.require-proxy defaults to true), with rate limiting.
 # Infrastructure comes from environment variables (see .env.example).
 squadfy:
+  # Spec 009 RN-4: production always requires email verification, whatever EMAIL_VERIFICATION_ENABLED says
+  app-config:
+    email-verification:
+      enabled: true
   rate-limit:
     ip:
       apply-limit: ${RATE_LIMIT_ENABLED:true}

@@ -5,6 +5,7 @@ import com.kikepb.squadfy.domain.exception.*
 import com.kikepb.squadfy.domain.model.AuthenticatedUserModel
 import com.kikepb.squadfy.domain.model.UserModel
 import com.kikepb.squadfy.domain.model.UserId
+import com.kikepb.squadfy.infrastructure.config.AppConfig
 import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.database.entities.RefreshTokenEntity
 import com.kikepb.squadfy.infrastructure.database.entities.UserEntity
@@ -27,7 +28,8 @@ class AuthService(
     private val userRepository: UserRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val emailVerificationService: EmailVerificationService,
-    private val eventPublisher: EventPublisher
+    private val eventPublisher: EventPublisher,
+    private val appConfig: AppConfig
 ) {
 
     @Transactional
@@ -41,13 +43,24 @@ class AuthService(
 
         if (user != null) throw UserAlreadyExistsException()
 
+        val verificationRequired = appConfig.emailVerification.enabled
         val savedUser = userRepository.saveAndFlush(
             UserEntity(
                 email = trimmedEmail,
                 username = username.trim(),
-                hashedPassword = passwordEncoded.encode(password)
+                hashedPassword = passwordEncoded.encode(password),
+                hasVerifiedEmail = !verificationRequired
             )
         ).toUser()
+
+        // Spec 009 RN-2: without verification the user is already verified; Verified (not Created) registers the
+        // participant in the other modules without sending the verification email
+        if (!verificationRequired) {
+            eventPublisher.publish(
+                event = UserEvent.Verified(userId = savedUser.id, email = savedUser.email, username = savedUser.username)
+            )
+            return savedUser
+        }
 
         val token = emailVerificationService.createVerificationToken(email = trimmedEmail)
 
@@ -68,7 +81,8 @@ class AuthService(
             ?: throw InvalidCredentialsException()
 
         if (!passwordEncoded.matches(rawPassword = password, hashedPassword = user.hashedPassword)) throw InvalidCredentialsException()
-        if (!user.hasVerifiedEmail) throw EmailNotVerifiedException()
+        // Spec 009 RN-3: users registered before switching verification off can log in too
+        if (appConfig.emailVerification.enabled && !user.hasVerifiedEmail) throw EmailNotVerifiedException()
 
         return user.id?.let { userId ->
             val accessToken = jwtService.generateAccessToken(userId = userId)

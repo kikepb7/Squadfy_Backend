@@ -124,6 +124,11 @@ jwt:
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
 
 squadfy:
+  # Functional switches (spec 009). Production pins them in application-prod.yml.
+  app-config:
+    email-verification:
+      # Require verifying the email before logging in. Set EMAIL_VERIFICATION_ENABLED=false only for local/QA tests.
+      enabled: ${EMAIL_VERIFICATION_ENABLED:true}
   rate-limit:
     ip:
       apply-limit: ${RATE_LIMIT_ENABLED:false}

@@ -29,5 +29,6 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [006](006-production-readiness/spec.md) | Preparación para producción | Hecha (OpenAPI y rutas → `api-consistency`) | Solo falta elegir hosting |
 | [007](007-api-consistency/spec.md) | API coherente y documentada (v1) | Hecha — falta migrar la app ([guía](../docs/api/migracion-v1.md)) | Sí (app móvil) |
 | [008](008-app-parity/spec.md) | Invitados, excepciones, cierre/sorteo configurables, marcador manual | ✅ Implementada | Sí (paridad con la app) |
+| [009](009-app-config/spec.md) | App config: verificación de email desactivable (pruebas) | Hecha | — |
 
 Análisis inicial del repositorio: [`docs/analysis/2026-10-05-analisis-repositorio.md`](../docs/analysis/2026-10-05-analisis-repositorio.md).
