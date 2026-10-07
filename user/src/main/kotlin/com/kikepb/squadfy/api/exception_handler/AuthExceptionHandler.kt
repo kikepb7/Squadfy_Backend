@@ -62,13 +62,6 @@ class AuthExceptionHandler {
             .header(HttpHeaders.RETRY_AFTER, e.resetInSeconds.toString())
             .body(mapOf("code" to "RATE_LIMIT_EXCEEDED", "message" to e.message))
 
-    @ExceptionHandler(UnauthorizedException::class)
-    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    fun onUnauthorized(e: UnauthorizedException) = mapOf(
-        "code" to "UNAUTHORIZED",
-        "message" to e.message
-    )
-
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun onValidationException(e: MethodArgumentNotValidException): ResponseEntity<Map<String, Any>> {
         val errors = e.bindingResult.allErrors.map {

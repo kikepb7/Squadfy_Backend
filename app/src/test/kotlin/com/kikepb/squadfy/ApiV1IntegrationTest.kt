@@ -1,6 +1,7 @@
 package com.kikepb.squadfy
 
 import com.kikepb.squadfy.domain.events.user.UserEvent
+import com.kikepb.squadfy.domain.exception.UnauthorizedException
 import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.testing.InfrastructureTestContainersConfiguration
 import org.awaitility.Awaitility.await
@@ -10,6 +11,9 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
 import org.springframework.context.annotation.Import
+import org.springframework.mock.web.MockHttpServletRequest
+import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.web.servlet.HandlerExceptionResolver
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
 import java.time.Duration
 import java.util.UUID
@@ -31,6 +35,7 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
 
     @Autowired @Qualifier("requestMappingHandlerMapping") lateinit var handlerMapping: RequestMappingHandlerMapping
     @Autowired lateinit var eventPublisher: EventPublisher
+    @Autowired @Qualifier("handlerExceptionResolver") lateinit var handlerExceptionResolver: HandlerExceptionResolver
 
     @Test
     fun `club, schedule, announcement and ratings flow through v1`() {
@@ -278,6 +283,17 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
         assertEquals(200, call("GET", "/api/v1/chats/$chatId/messages", aliceToken).status)
         assertEquals(403, call("GET", "/api/v1/chats/$chatId/messages", strangerToken).status)
         assertEquals(404, call("GET", "/api/v1/chats/$chatId", strangerToken).status)
+    }
+
+    @Test
+    fun `missing auth details are a 401, never a 429`() {
+        val handler = handlerMapping.handlerMethods.values.first { it.beanType.simpleName == "MeController" && it.method.name == "getMe" }
+        val response = MockHttpServletResponse()
+
+        handlerExceptionResolver.resolveException(MockHttpServletRequest("GET", "/api/v1/me"), response, handler, UnauthorizedException())
+
+        assertEquals(401, response.status)
+        assertTrue(response.contentAsString.contains("\"UNAUTHORIZED\""), response.contentAsString)
     }
 
     @Test
