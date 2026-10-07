@@ -48,5 +48,7 @@ El esquema lo gestiona Flyway (`app/src/main/resources/db/migration`); Hibernate
 
 ## Documentación
 
+- **Documento completo del backend** (arquitectura, configuración, endpoints, modelos, WebSocket, push, guía para la app): [`docs/BACKEND.md`](docs/BACKEND.md).
+
 - Specs (Spec-Driven Development): [`specs/README.md`](specs/README.md) y [`specs/constitution.md`](specs/constitution.md).
 - Análisis inicial: [`docs/analysis/2026-10-05-analisis-repositorio.md`](docs/analysis/2026-10-05-analisis-repositorio.md).

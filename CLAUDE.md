@@ -8,6 +8,7 @@ Kotlin 2.3 · JVM 21 · Spring Boot 4.1 · PostgreSQL (esquema por módulo, Flyw
 - Todo cambio funcional parte de una spec en `specs/NNN-*/` (`spec.md` → `plan.md` → `tasks.md`). Usa la skill `sdd`.
 - Principios obligatorios: `specs/constitution.md`. Índice y estado: `specs/README.md`.
 - Análisis inicial y deuda conocida: `docs/analysis/2026-10-05-analisis-repositorio.md`.
+- Documento completo del backend (contrato para la app): `docs/BACKEND.md` — mantenlo al día cuando cambie la API.
 
 ## Módulos
 `app` (ensamblado, seguridad, config) · `common` (tipos, eventos, puertos entre módulos, storage, JWT) · `user` (auth) · `club` · `match` · `chat` · `notification`.
