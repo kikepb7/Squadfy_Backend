@@ -119,7 +119,7 @@ Otros comandos:
 | Imagen Docker | `docker build -t squadfy-backend .` |
 | Salud | `curl localhost:8080/actuator/health` |
 
-Base de datos: el esquema lo crean las migraciones **Flyway** (`app/src/main/resources/db/migration`, V1–V6) al arrancar; Hibernate solo valida.
+Base de datos: el esquema lo crean las migraciones **Flyway** (`app/src/main/resources/db/migration`, V1–V7) al arrancar; Hibernate solo valida.
 
 ---
 

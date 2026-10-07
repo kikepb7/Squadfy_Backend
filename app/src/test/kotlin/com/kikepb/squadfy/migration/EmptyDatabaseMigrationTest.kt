@@ -23,6 +23,6 @@ class EmptyDatabaseMigrationTest {
             "SELECT version FROM public.flyway_schema_history WHERE success AND version IS NOT NULL ORDER BY installed_rank",
             String::class.java
         )
-        assertEquals(listOf("1", "2", "3", "4", "5", "6"), versions)
+        assertEquals(listOf("1", "2", "3", "4", "5", "6", "7"), versions)
     }
 }
