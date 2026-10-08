@@ -4,6 +4,7 @@ import com.kikepb.squadfy.domain.exception.ChatNotFoundException
 import com.kikepb.squadfy.domain.exception.ChatParticipantNotFoundException
 import com.kikepb.squadfy.domain.exception.InvalidChatSizeException
 import com.kikepb.squadfy.domain.exception.InvalidProfilePictureException
+import com.kikepb.squadfy.domain.exception.InvalidSearchQueryException
 import com.kikepb.squadfy.domain.exception.MessageNotFoundException
 import com.kikepb.squadfy.domain.exception.StorageException
 import org.springframework.http.HttpStatus
@@ -29,6 +30,13 @@ class ChatExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onForbidden(e: InvalidChatSizeException) = mapOf(
         "code" to "INVALID_CHAT_SIZE",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(InvalidSearchQueryException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun onInvalidSearchQuery(e: InvalidSearchQueryException) = mapOf(
+        "code" to "BAD_REQUEST",
         "message" to e.message
     )
 

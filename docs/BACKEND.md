@@ -45,6 +45,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 |---|---|
 | Autenticación (registro, verificación por email opcional, login, refresh, reset/cambio de contraseña) | ✅ |
 | Feature flags por entorno (`FEATURE_*`, `GET /features`; spec 011) | ✅ |
+| Avisos en tiempo real por WebSocket, estadísticas por periodo, foto por club, búsqueda de usuarios (spec 012) | ✅ |
 | Borrado de cuenta desde la app y desde la web (`/account/delete`), rate limit por cuenta (spec 010) | ✅ |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
@@ -58,7 +59,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Docker, Flyway, CI (GitHub Actions), health checks | ✅ |
 | **Despliegue** (elegir hosting, registro de imágenes, CD) | ⏳ pendiente |
 
-Calidad: `./gradlew build` ejecuta ~135 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
+Calidad: `./gradlew build` ejecuta ~143 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
 
 ---
 
@@ -235,6 +236,7 @@ Para añadir uno: nueva entrada en el enum `Feature` (`common`), declararlo en `
 - **Vetar**: como expulsar, pero **no puede volver** (403 `BANNED_FROM_CLUB` al unirse) hasta que un gestor levante el veto. También se puede vetar a quien ya salió.
 - Al salir/ser expulsado/vetado se **conserva su historial y rating**; deja de verse en el club y **sale de las convocatorias abiertas** (si estaba confirmado, sube el primero de la lista de espera). Si vuelve, recupera la misma ficha (`clubMemberId`) con rol `PLAYER`.
 - Privacidad: el **email no se muestra** al resto de miembros.
+- **Foto por club**: cada miembro puede subir una foto propia para cada club (`PUT /clubs/{id}/members/me/picture`, multipart `picture`, jpeg/png/webp) y quitarla. `ClubMemberDto.pictureUrl` es la que hay que mostrar: la del club si existe, si no la de perfil (que ahora siempre es la actual).
 
 ### 7.2 Horario semanal y planificación
 - Un horario por club: día de la semana, hora local, **zona horaria IANA** (defecto `Europe/Madrid`), **formato** (`FIVE_A_SIDE`=10 plazas, `SEVEN_A_SIDE`=14, `ELEVEN_A_SIDE`=22) y **duración** (10–180 min, defecto 60).
@@ -274,7 +276,7 @@ Para añadir uno: nueva entrada en el enum `Feature` (`common`), declararlo en `
 - **Cerrar** (`complete`): solo `SCHEDULED`, con la hora de inicio pasada y con equipos. El marcador = el manual si existe; si no, goles registrados por equipo. Actualiza el rating.
 - **Reabrir** (`reopen`): solo el **último** partido cerrado del club; revierte sus cambios de rating y permite corregir eventos y minutos; luego se vuelve a cerrar.
 - **Rating** (Elo): empieza en 1000; sube/baja según el resultado esperado vs real del equipo, la diferencia de goles y la aportación individual (goles, asistencias, tarjetas, suma cero). Provisional hasta 10 partidos. **Público en el club** (clasificación); cada jugador ve su posición. No hay valoración manual: la "valoración del partido" de cada miembro es su variación de rating, en `MatchDto.ratingChanges` (partidos cerrados). Los invitados cuentan en la media de su equipo con 1000, pero no tienen rating ni estadísticas.
-- **Estadísticas**: partidos, victorias, empates, derrotas, goles, asistencias, amarillas, rojas y minutos, calculadas de los partidos **cerrados**. Clasificación ordenable por `GOALS`, `ASSISTS`, `MATCHES`, `MINUTES`, `WINS`; incluye a todos los miembros (con ceros). Los empates comparten posición (1, 2, 2, 4).
+- **Estadísticas**: partidos, victorias, empates, derrotas, goles, asistencias, amarillas, rojas y minutos, calculadas de los partidos **cerrados**. Clasificación ordenable por `GOALS`, `ASSISTS`, `MATCHES`, `MINUTES`, `WINS`; incluye a todos los miembros (con ceros). Los empates comparten posición (1, 2, 2, 4). **Por periodo** (p. ej. una temporada): `from`/`to` (`YYYY-MM-DD`, inclusivos, en la zona del club) cuentan solo los partidos cerrados de ese rango; sin ellos, todo. El rating no se filtra (es acumulado).
 
 ### 7.6 Notificaciones
 Solo **push** (FCM). Detalle en [§13](#13-notificaciones-push-firebase). Cada usuario puede **silenciar un club** (salvo el aviso de "tienes plaza").
@@ -307,6 +309,7 @@ Permisos: **público** (sin token), **auth** (cualquier usuario autenticado), **
 | GET | `/me` | auth | — | `UserDto` (con email) |
 | DELETE | `/me` | auth | `{password}` | **204** (borra la cuenta) |
 | GET | `/users?query=` | auth | — | `ChatParticipantDto` (búsqueda exacta por username o email; 404 si no existe) |
+| GET | `/users/search?q=` | auth | — | `ChatParticipantDto[]` (hasta 20; username que **contiene** `q` sin distinguir mayúsculas, primero los que empiezan por `q`, o email exacto; `q` ≥ 2 caracteres; nunca tú mismo) |
 | GET | `/users/{userId}` | auth | — | `ChatParticipantDto` (perfil público: nombre y foto) |
 | POST | `/me/profile-picture/upload-url?mimeType=` | auth | — | `PictureUploadResponse` |
 | PUT | `/me/profile-picture` | auth | `{publicUrl}` | 200 |
@@ -327,6 +330,8 @@ Foto de perfil: `mimeType` ∈ `image/jpeg`, `image/png`, `image/webp`. 1) pedir
 | POST | `/clubs/{clubId}/transfer-ownership` | owner | `{memberId}` | `ClubDto` |
 | GET | `/clubs/{clubId}/members` | miembro | — | `ClubMemberDto[]` (activos) |
 | PATCH | `/clubs/{clubId}/members/me` | miembro | `{shirtNumber?, position?}` | `ClubMemberDto` |
+| PUT | `/clubs/{clubId}/members/me/picture` | miembro | multipart, parte `picture` (jpeg/png/webp) | `ClubMemberDto` (400 si el tipo no vale) |
+| DELETE | `/clubs/{clubId}/members/me/picture` | miembro | — | `ClubMemberDto` |
 | DELETE | `/clubs/{clubId}/members/me` | miembro (no owner) | — | **204** |
 | DELETE | `/clubs/{clubId}/members/{memberId}` | gestor (jerarquía) | — | **204** |
 | PATCH | `/clubs/{clubId}/members/{memberId}/role` | gestor (jerarquía) | `{role}` | `ClubMemberDto` |
@@ -377,8 +382,8 @@ Foto de perfil: `mimeType` ∈ `image/jpeg`, `image/png`, `image/webp`. 1) pedir
 |---|---|---|---|
 | GET | `/clubs/{clubId}/ratings` | miembro | `RatingLeaderboardEntryDto[]` (clasificación por rating) |
 | GET | `/clubs/{clubId}/ratings/me` | miembro | `PlayerRatingDto` |
-| GET | `/clubs/{clubId}/stats?sortBy=GOALS\|ASSISTS\|MATCHES\|MINUTES\|WINS` | miembro | `ClubStatsEntryDto[]` (defecto `GOALS`) |
-| GET | `/clubs/{clubId}/stats/me` | miembro | `PlayerStatsDto` |
+| GET | `/clubs/{clubId}/stats?sortBy=GOALS\|ASSISTS\|MATCHES\|MINUTES\|WINS&from=&to=` | miembro | `ClubStatsEntryDto[]` (defecto `GOALS`; `from`/`to` opcionales, 400 si `from > to`) |
+| GET | `/clubs/{clubId}/stats/me?from=&to=` | miembro | `PlayerStatsDto` |
 
 ### 8.6 Chat
 | Método | Ruta | Permiso | Cuerpo | Respuesta |
@@ -423,7 +428,10 @@ PictureUploadResponse(uploadUrl: String, publicUrl: String, headers: Map<String,
 ### Club
 ```kotlin
 ClubDto(id, name, description?, clubLogoUrl?, ownerId: UserId, invitationCode, maxMembers?, membersCount, createdAt, updatedAt)
-ClubMemberDto(id: ClubMemberId, clubId, userId, username, profilePictureUrl?, shirtNumber?, position: String?, role: ClubMemberRole, createdAt, updatedAt)
+ClubMemberDto(id: ClubMemberId, clubId, userId, username,
+              pictureUrl?,          // la que hay que mostrar: clubPictureUrl ?: profilePictureUrl
+              profilePictureUrl?, clubPictureUrl?,
+              shirtNumber?, position: String?, role: ClubMemberRole, createdAt, updatedAt)
 ClubBanDto(clubMemberId, userId, username, bannedAt: Instant)
 InvitationCodeDto(invitationCode: String)
 ```
@@ -576,7 +584,7 @@ Formato: `{ "code": "...", "message": "..." }`. El `message` está en inglés y 
 | 403 | `EMAIL_NOT_VERIFIED` | Login sin verificar el email (solo con el flag `email-verification` activado) |
 | 404 | `NOT_FOUND` / `USER_NOT_FOUND` | Recurso inexistente |
 | 409 | `CONFLICT` | Ya apuntado, ya miembro, club lleno, horario ya existe, estado del partido no permite la acción, owner que intenta salir, datos duplicados |
-| 409 | `USER_EXITS` | Registro con email o username ya usados (sic, ver §16) |
+| 409 | `USER_EXISTS` | Registro con email o username ya usados (antes `USER_EXITS`) |
 | 409 | `SAME_PASSWORD` | La nueva contraseña es igual a la anterior |
 | 429 | `RATE_LIMIT_EXCEEDED` | Demasiadas peticiones de auth para esa cuenta (o IP); cabecera `Retry-After` |
 | 500 | `STORAGE_ERROR` | Fallo subiendo/borrando en Supabase Storage |
@@ -588,7 +596,7 @@ Formato: `{ "code": "...", "message": "..." }`. El `message` está en inglés y 
 - **URL**: `ws://<host>/ws/chat` (`wss://` en producción).
 - **Autenticación**: cabecera **`Authorization: Bearer <accessToken>`** en el handshake (no hay token por query string). Sin token válido el handshake se rechaza (401). Al caducar el access token, la conexión abierta sigue viva; al reconectar hay que usar un token válido.
 - **Keep-alive**: el servidor envía *ping* cada 30 s y cierra la conexión si no recibe *pong* en 60 s (los clientes WebSocket estándar, incluido Ktor, responden *pong* automáticamente).
-- Al conectar, el servidor suscribe la sesión a todos los chats del usuario.
+- Al conectar, el servidor suscribe la sesión a todos los chats del usuario y le envía los avisos `CLUB_DATA_CHANGED` de sus clubes. **La misma conexión sirve para el chat y para los avisos de partidos**: conviene abrirla al iniciar sesión, no solo en la pantalla de chat.
 
 ### Envoltorio
 Todos los mensajes (en ambos sentidos) son JSON con un `payload` que es **una cadena con JSON dentro**:
@@ -608,6 +616,7 @@ Todos los mensajes (en ambos sentidos) son JSON con un `payload` que es **una ca
 | `MESSAGE_DELETED` | `{chatId, messageId}` | Un mensaje se borró (vía `DELETE /messages/{id}`) |
 | `CHAT_PARTICIPANTS_CHANGED` | `{chatId}` | Alguien entró/salió: recargar `GET /chats/{chatId}` |
 | `PROFILE_PICTURE_UPDATED` | `{userId, newUrl?}` | Un contacto cambió o quitó su foto |
+| `CLUB_DATA_CHANGED` | `{clubId, scope, matchId?}` | Cambió algo de uno de tus clubes (spec 012). `scope=MATCH` (con `matchId`): convocatoria, inscripciones, invitados, equipos, eventos, marcador, minutos, estado o fecha → recargar `GET /matches/{matchId}` y su convocatoria. `SCHEDULE`: horario o excepciones. `ABSENCES`: ausencias. Un aviso por operación |
 | `ERROR` | `{code, message}` | P. ej. `INVALID_JSON` si el mensaje no es válido (la conexión sigue abierta) |
 
 Las fechas dentro del `payload` siguen el mismo formato ISO-8601 que la API REST.
@@ -668,14 +677,14 @@ Apertura y recordatorio se envían **una sola vez** por convocatoria. Silenciar 
 | Gestión del partido (gestores) | `POST /matches/{id}/teams` (AUTO/MANUAL), `GET /matches/{id}/team-balance`, eventos, `PUT .../minutes`, `PUT/DELETE .../score`, `POST .../complete`, `POST .../reopen`, `POST .../cancel` |
 | Horario (gestores) | `GET/POST/PATCH /clubs/{id}/schedule` (incluye hora de cierre y de sorteo); excepciones `GET/POST/DELETE /clubs/{id}/schedule/exceptions` |
 | Ausencias | `GET /clubs/{id}/absences?from=&to=`; las mías: `POST/DELETE /clubs/{id}/members/me/absences` |
-| Miembros y roles | `GET /clubs/{id}/members`; gestores: rol, expulsar, vetar, `GET /clubs/{id}/bans`; owner: transferir; todos: `PATCH /members/me`, salir |
-| Clasificaciones | `GET /clubs/{id}/ratings`, `/ratings/me`, `GET /clubs/{id}/stats?sortBy=…`, `/stats/me` (cruzar `clubMemberId` con miembros) |
+| Miembros y roles | `GET /clubs/{id}/members` (mostrar `pictureUrl`); gestores: rol, expulsar, vetar, `GET /clubs/{id}/bans`; owner: transferir; todos: `PATCH /members/me`, foto del club (`PUT/DELETE /members/me/picture`), salir |
+| Clasificaciones | `GET /clubs/{id}/ratings`, `/ratings/me`, `GET /clubs/{id}/stats?sortBy=…&from=&to=`, `/stats/me` (selector de temporada = rango de fechas; cruzar `clubMemberId` con miembros) |
 | Ajustes del club | `GET/PUT /clubs/{id}/notification-settings`; gestores: `PATCH /clubs/{id}`, logo, regenerar código |
-| Chat | `GET /chats`, `GET /chats/{id}/messages?before=` para scroll hacia atrás, WebSocket para enviar/recibir, `GET /users?query=` para buscar a quién escribir |
+| Chat | `GET /chats`, `GET /chats/{id}/messages?before=` para scroll hacia atrás, WebSocket para enviar/recibir, `GET /users/search?q=` (búsqueda mientras se escribe) para elegir a quién escribir |
 | Perfil | `GET /me`, `GET /users/{myId}` (foto), flujo de foto (`upload-url` → subir → `PUT /me/profile-picture`), **borrar cuenta** (`DELETE /me {password}` tras pedir la contraseña y confirmar) |
 
 ### Actualización de datos
-- Convocatorias, equipos y partidos **no llegan por WebSocket**: refrescar al abrir la pantalla, con *pull-to-refresh* y **al recibir una push** del tipo correspondiente (usar `clubId`/`matchId` de `data` para navegar y recargar).
+- Con la app abierta, escuchar **`CLUB_DATA_CHANGED`** por el WebSocket y recargar lo indicado (`scope`/`matchId`). Mantener además el refresco al abrir la pantalla, *pull-to-refresh* y al recibir una push (la conexión puede caerse).
 - El chat sí es en tiempo real (WebSocket); reconectar con backoff si se cae.
 
 ### Permisos en la UI
@@ -700,6 +709,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 11. **Spec 008 (paridad con la app)**: invitados en la convocatoria (entradas con `participantType`), excepciones del calendario, ausencias, `closeTime`/`drawTime` configurables (`drawAt` en la convocatoria), marcador manual oficial y `ratingChanges` por partido. **Se retira la valoración manual** (el nivel es el rating automático). La foto por club queda en backlog.
 12. **Spec 010**: borrado de cuenta (`DELETE /me {password}` y página web `/account/delete`) y rate limit por cuenta con `Retry-After`.
 13. **Spec 011**: feature flags (`GET /features`); **la verificación de email deja de ser obligatoria** por defecto; el correo de verificación (si se activa) abre la página `/account/verify-email`; `DELETE /devices/{token}` responde 204 y solo borra dispositivos propios.
+14. **Spec 012**: aviso `CLUB_DATA_CHANGED` por WebSocket; `from`/`to` en estadísticas; foto por club (`pictureUrl`, `clubPictureUrl` en `ClubMemberDto`); `GET /users/search?q=`; el código `USER_EXITS` pasa a **`USER_EXISTS`**.
 
 ---
 
@@ -708,12 +718,8 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 | Tema | Detalle |
 |---|---|
 | Despliegue | Falta elegir hosting; la imagen Docker y la CI están listas. Servicios gestionados: Supabase (PostgreSQL + Storage), CloudAMQP, Redis Cloud, Mailgun, Firebase |
-| Código `USER_EXITS` | Errata histórica de `USER_EXISTS`; se mantiene por compatibilidad hasta acordar el cambio |
-| Tiempo real | Convocatorias y partidos no se emiten por WebSocket; la app refresca al abrir o al recibir push |
-| Búsqueda de usuarios | `GET /users?query=` busca coincidencia exacta de username o email |
-| Estadísticas | Sin filtros por temporada/fechas |
-| Foto por club | En backlog (spec 008): la foto es la del perfil del usuario |
+| Tiempo real | Los avisos `CLUB_DATA_CHANGED` (y el chat) viven en la memoria de una instancia: con varias instancias haría falta repartirlos (p. ej. por RabbitMQ) |
 | Configuración de cierre/sorteo | Un cambio en el horario aplica a los partidos planificados después; la convocatoria ya abierta mantiene sus horas |
-| Deuda técnica | RabbitMQ y Redis aún serializan con Jackson 2; *open-in-view* activo; algún aviso de deprecación |
+| Mensajes en cola al desplegar la spec 012 | RabbitMQ pasa a Jackson 3: si quedaran eventos antiguos sin consumir en las colas al actualizar, podrían no leerse (en la práctica las colas se vacían en segundos) |
 
 Documentos relacionados: [`specs/README.md`](../specs/README.md) (specs por funcionalidad, SDD) · [`docs/api/migracion-v1.md`](api/migracion-v1.md) (migración de la app) · [`README.md`](../README.md).

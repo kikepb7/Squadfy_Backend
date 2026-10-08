@@ -1,8 +1,6 @@
 package com.kikepb.squadfy.domain.events.match
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.kikepb.squadfy.domain.events.SquadfyEvent
-import com.kikepb.squadfy.domain.events.user.InstantToStringSerializer
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.MatchAnnouncementId
 import com.kikepb.squadfy.domain.type.MatchId
@@ -18,7 +16,6 @@ import java.util.UUID
 sealed class MatchEvent(
     override val eventId: String = UUID.randomUUID().toString(),
     override val exchange: String = MatchEventConstants.MATCH_EXCHANGE,
-    @JsonSerialize(using = InstantToStringSerializer::class)
     override val occurredAt: Instant = Instant.now()
 ) : SquadfyEvent {
 
@@ -81,7 +78,6 @@ sealed class MatchEvent(
         override val matchId: MatchId,
         override val matchScheduledAt: Instant,
         override val timeZone: String,
-        @JsonSerialize(using = InstantToStringSerializer::class)
         val previousScheduledAt: Instant,
         val recipientUserIds: List<UserId>,
         override val eventKey: String = MatchEventConstants.MATCH_RESCHEDULED

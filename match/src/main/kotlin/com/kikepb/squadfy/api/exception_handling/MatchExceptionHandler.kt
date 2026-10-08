@@ -18,6 +18,7 @@ import com.kikepb.squadfy.domain.exception.GuestNotFoundException
 import com.kikepb.squadfy.domain.exception.InvalidMatchScoreException
 import com.kikepb.squadfy.domain.exception.InvalidMemberAbsenceException
 import com.kikepb.squadfy.domain.exception.InvalidScheduleExceptionException
+import com.kikepb.squadfy.domain.exception.InvalidStatsPeriodException
 import com.kikepb.squadfy.domain.exception.MemberAbsenceNotFoundException
 import com.kikepb.squadfy.domain.exception.ScheduleExceptionAlreadyExistsException
 import com.kikepb.squadfy.domain.exception.ScheduleExceptionNotFoundException
@@ -62,7 +63,8 @@ class MatchExceptionHandler {
         InvalidPlayerMinutesException::class,
         InvalidMatchScoreException::class,
         InvalidScheduleExceptionException::class,
-        InvalidMemberAbsenceException::class
+        InvalidMemberAbsenceException::class,
+        InvalidStatsPeriodException::class
     )
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onBadRequest(e: RuntimeException) = mapOf(

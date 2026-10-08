@@ -41,6 +41,13 @@ class ClubUserDataEraser(
 
     @Transactional
     override fun eraseUserData(userId: UserId) {
+        // Spec 012 RN-C4: club pictures are personal data
+        clubMemberRepository.findAllByUserId(userId = userId).filter { it.clubPictureUrl != null }.forEach { membership ->
+            deleteFromStorage(url = requireNotNull(membership.clubPictureUrl))
+            membership.clubPictureUrl = null
+            clubMemberRepository.save(membership)
+        }
+
         clubMemberRepository.findAllByUserIdAndLeftAtIsNullOrderByCreatedAtDesc(userId = userId).forEach { membership ->
             val club = clubRepository.findByIdOrNull(membership.clubId) ?: return@forEach
             if (membership.role == OWNER && !handOver(club = club, owner = membership)) {
@@ -98,15 +105,17 @@ class ClubUserDataEraser(
         clubMemberRepository.flush()
         clubRepository.delete(club)
         clubRepository.flush()
-        club.clubLogoUrl?.let { logo ->
-            try {
-                storageService.deleteFile(url = logo)
-            } catch (e: Exception) {
-                log.warn("[AccountDeletion] Could not delete the logo of club={}", clubId, e)
-            }
-        }
+        club.clubLogoUrl?.let { deleteFromStorage(url = it) }
         eventPublisher.publishAfterCommit(ClubEvent.ClubDeleted(clubId = clubId))
         log.info("[AccountDeletion] Club={} deleted: its owner was the last member", clubId)
+    }
+
+    private fun deleteFromStorage(url: String) {
+        try {
+            storageService.deleteFile(url = url)
+        } catch (e: Exception) {
+            log.warn("[AccountDeletion] Could not delete the stored image {}: {}", url, e.message)
+        }
     }
 
     companion object {

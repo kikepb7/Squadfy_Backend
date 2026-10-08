@@ -34,6 +34,7 @@ class MatchTeamService(
     private val clubMembershipProvider: ClubMembershipProvider,
     private val playerRatingService: PlayerRatingService,
     private val matchNotificationPublisher: MatchNotificationPublisher,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard
 ) {
 
@@ -115,6 +116,7 @@ class MatchTeamService(
     private fun publish(match: MatchEntity, participants: Participants, teamA: List<UUID>, teamB: List<UUID>) {
         val matchId = requireNotNull(match.id)
         replaceTeams(matchId = matchId, teamA = teamA, teamB = teamB, guestIds = participants.guestIds)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         matchNotificationPublisher.teamsPublished(
             clubId = match.clubId,
             matchId = matchId,

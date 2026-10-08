@@ -34,6 +34,7 @@ class MatchService(
     private val matchPlanningService: MatchPlanningService,
     private val playerRatingService: PlayerRatingService,
     private val matchNotificationPublisher: MatchNotificationPublisher,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -84,6 +85,7 @@ class MatchService(
         match.status = CANCELLED
         matchRepository.saveAndFlush(match)
         matchAnnouncementService.cancelForMatch(matchId = matchId)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         matchNotificationPublisher.matchCancelled(
             clubId = match.clubId,
             matchId = matchId,
@@ -104,6 +106,7 @@ class MatchService(
         match.manualTeamAScore = teamAScore
         match.manualTeamBScore = teamBScore
         matchRepository.saveAndFlush(match)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         return loadMatch(matchId = matchId)
     }
 
@@ -116,6 +119,7 @@ class MatchService(
         match.manualTeamAScore = null
         match.manualTeamBScore = null
         matchRepository.saveAndFlush(match)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         return loadMatch(matchId = matchId)
     }
 
@@ -141,6 +145,7 @@ class MatchService(
         match.status = COMPLETED
         matchRepository.saveAndFlush(match)
         playerRatingService.applyCompletedMatch(match = model)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         return loadMatch(matchId = matchId)
     }
 
@@ -158,6 +163,7 @@ class MatchService(
         playerRatingService.revertMatch(clubId = match.clubId, matchId = matchId)
         match.status = SCHEDULED
         matchRepository.saveAndFlush(match)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         return loadMatch(matchId = matchId)
     }
 
@@ -177,6 +183,7 @@ class MatchService(
 
         player.minutesPlayed = minutes
         matchTeamPlayerRepository.saveAndFlush(player)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
         return loadMatch(matchId = matchId)
     }
 

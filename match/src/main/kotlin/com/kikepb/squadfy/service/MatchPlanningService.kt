@@ -37,6 +37,7 @@ class MatchPlanningService(
     private val scheduleExceptionRepository: ScheduleExceptionRepository,
     private val matchAnnouncementService: MatchAnnouncementService,
     private val matchNotificationPublisher: MatchNotificationPublisher,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clock: Clock
 ) {
 
@@ -148,6 +149,7 @@ class MatchPlanningService(
             closesAt = window.closesAt,
             drawAt = window.drawAt
         )
+        liveUpdatePublisher.matchChanged(clubId = clubId, matchId = requireNotNull(match.id))
 
         return match.toMatchModel()
     }
@@ -174,6 +176,7 @@ class MatchPlanningService(
             draw = schedule?.draw ?: DeadlineRule.DEFAULT
         )
         matchAnnouncementService.updateDeadlines(matchId = requireNotNull(match.id), closesAt = window.closesAt, drawAt = window.drawAt)
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = requireNotNull(match.id))
         matchNotificationPublisher.matchRescheduled(
             clubId = match.clubId,
             matchId = requireNotNull(match.id),
@@ -189,6 +192,7 @@ class MatchPlanningService(
         match.status = SCHEDULED
         matchRepository.saveAndFlush(match)
         matchAnnouncementService.reactivateForMatch(matchId = requireNotNull(match.id))
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = requireNotNull(match.id))
     }
 
     fun regularMatchTime(schedule: ClubMatchScheduleModel, date: LocalDate): Instant =

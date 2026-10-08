@@ -32,5 +32,6 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [009](009-app-config/spec.md) | App config: verificación de email desactivable (pruebas) | Sustituida por 011 | — |
 | [010](010-account-deletion-rate-limits/spec.md) | Borrado de cuenta (app + web) y rate limit por cuenta | Hecha | Sí (publicación en tiendas) |
 | [011](011-feature-flags/spec.md) | Feature flags (verificación de email opcional), página de verificación, baja de dispositivos propia | Hecha | — |
+| [012](012-mvp-completion/spec.md) | Cierre del MVP: tiempo real, estadísticas por periodo, foto por club, búsqueda de usuarios, deuda técnica | Hecha | — |
 
 Análisis inicial del repositorio: [`docs/analysis/2026-10-05-analisis-repositorio.md`](../docs/analysis/2026-10-05-analisis-repositorio.md).

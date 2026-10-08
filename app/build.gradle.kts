@@ -19,7 +19,6 @@ dependencies {
 	implementation(libs.spring.boot.starter.mail)
 	implementation(libs.spring.boot.starter.redis)
 	implementation(libs.spring.boot.starter.amqp)
-    implementation(libs.jackson.datatype)
 	runtimeOnly(libs.postgresql)
 
 	implementation(libs.spring.boot.starter.flyway)
@@ -29,4 +28,6 @@ dependencies {
 
 	testImplementation(libs.spring.boot.data.jpa.test)
 	testImplementation(testFixtures(projects.common))
+	// Tests parse JSON responses with Jackson 2 (the application itself uses Jackson 3)
+	testImplementation(libs.jackson.module.kotlin)
 }

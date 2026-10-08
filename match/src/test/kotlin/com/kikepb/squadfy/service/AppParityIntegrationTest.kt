@@ -71,7 +71,8 @@ import kotlin.test.assertTrue
     MatchAnnouncementNotificationService::class,
     PlayerStatsService::class,
     MemberAbsenceService::class,
-    ScheduleExceptionService::class
+    ScheduleExceptionService::class,
+    LiveUpdatePublisher::class
 )
 class AppParityIntegrationTest {
 

@@ -15,6 +15,7 @@ import com.kikepb.squadfy.domain.model.ClubMemberModel.ClubMemberRole.PLAYER
 import com.kikepb.squadfy.domain.model.ClubModel
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.UserId
+import com.kikepb.squadfy.domain.user.ProfilePictureProvider
 import com.kikepb.squadfy.infrastructure.database.entities.ClubEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.ADMIN
@@ -27,6 +28,7 @@ import com.kikepb.squadfy.infrastructure.database.repositories.ClubRepository
 import com.kikepb.squadfy.infrastructure.message_queue.EventPublisher
 import com.kikepb.squadfy.infrastructure.storage.SupabaseStorageService
 import org.springframework.data.repository.findByIdOrNull
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.security.SecureRandom
@@ -36,10 +38,14 @@ class ClubService(
     private val clubRepository: ClubRepository,
     private val clubMemberRepository: ClubMemberRepository,
     private val clubParticipantService: ClubParticipantService,
+    private val profilePictureProvider: ProfilePictureProvider,
     private val clubMemberGuard: ClubMemberGuard,
     private val storageService: SupabaseStorageService,
     private val eventPublisher: EventPublisher
 ) {
+
+    private val logger = LoggerFactory.getLogger(ClubService::class.java)
+
     @Transactional
     fun createClub(userId: UserId, name: String, description: String?, clubLogoUrl: String?, maxMembers: Int?): ClubModel {
         ensureUserExists(userId = userId)
@@ -174,13 +180,14 @@ class ClubService(
     fun getMembers(clubId: ClubId, userId: UserId): List<ClubMemberModel> {
         clubMemberGuard.requireMember(clubId = clubId, userId = userId)
         val members = clubMemberRepository.findAllActiveByClubIdWithUserParticipant(clubId = clubId)
+        val profilePictures = profilePictureProvider.findProfilePictures(userIds = members.map { it.userId })
 
         return members.map { member ->
             val userSnapshot = member.userParticipant ?: throw ClubParticipantNotFoundException(userId = member.userId)
             member.toClubMemberModel(
                 username = userSnapshot.username,
                 email = userSnapshot.email,
-                profilePictureUrl = userSnapshot.profilePictureUrl
+                profilePictureUrl = profilePictures[member.userId]
             )
         }
     }
@@ -192,12 +199,53 @@ class ClubService(
         shirtNumber?.let { membership.shirtNumber = it }
         position?.let { membership.position = it.name }
         clubMemberRepository.saveAndFlush(membership)
+        return membership.toModelWithProfile()
+    }
 
+    /** The member's own picture in this club (spec 012 RN-C1); the previous one is removed from storage. */
+    @Transactional
+    fun updateMyClubPicture(clubId: ClubId, userId: UserId, bytes: ByteArray, mimeType: String): ClubMemberModel {
+        val membership = clubMemberGuard.requireMember(clubId = clubId, userId = userId)
+        if (mimeType !in SupabaseStorageService.ALLOWED_IMAGE_MIME_TYPES) {
+            throw InvalidClubOperationException("Unsupported image type: $mimeType. Allowed: ${SupabaseStorageService.ALLOWED_IMAGE_MIME_TYPES.keys}")
+        }
+        val previous = membership.clubPictureUrl
+        membership.clubPictureUrl = storageService.uploadImage(
+            bucket = CLUB_LOGO_BUCKET,
+            folder = MEMBER_PICTURE_FOLDER,
+            bytes = bytes,
+            mimeType = mimeType
+        )
+        clubMemberRepository.saveAndFlush(membership)
+        previous?.let { deleteStoredPicture(url = it) }
+        return membership.toModelWithProfile()
+    }
+
+    @Transactional
+    fun deleteMyClubPicture(clubId: ClubId, userId: UserId): ClubMemberModel {
+        val membership = clubMemberGuard.requireMember(clubId = clubId, userId = userId)
+        membership.clubPictureUrl?.let { url ->
+            membership.clubPictureUrl = null
+            clubMemberRepository.saveAndFlush(membership)
+            deleteStoredPicture(url = url)
+        }
+        return membership.toModelWithProfile()
+    }
+
+    private fun deleteStoredPicture(url: String) {
+        try {
+            storageService.deleteFile(url = url)
+        } catch (e: Exception) {
+            logger.warn("Could not delete the club picture {}: {}", url, e.message)
+        }
+    }
+
+    private fun ClubMemberEntity.toModelWithProfile(): ClubMemberModel {
         val participant = clubParticipantService.ensureExists(userId = userId)
-        return membership.toClubMemberModel(
+        return toClubMemberModel(
             username = participant.username,
             email = participant.email,
-            profilePictureUrl = participant.profilePictureUrl
+            profilePictureUrl = profilePictureProvider.findProfilePictures(userIds = listOf(userId))[userId]
         )
     }
 
@@ -230,5 +278,6 @@ class ClubService(
     private companion object {
         const val CLUB_LOGO_BUCKET = "profile-pictures"
         const val CLUB_LOGO_FOLDER = "clubs"
+        const val MEMBER_PICTURE_FOLDER = "club-members"
     }
 }

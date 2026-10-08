@@ -1,8 +1,6 @@
 package com.kikepb.squadfy.domain.events.club
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import com.kikepb.squadfy.domain.events.SquadfyEvent
-import com.kikepb.squadfy.domain.events.user.InstantToStringSerializer
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
@@ -12,7 +10,6 @@ import java.util.UUID
 sealed class ClubEvent(
     override val eventId: String = UUID.randomUUID().toString(),
     override val exchange: String = ClubEventConstants.CLUB_EXCHANGE,
-    @JsonSerialize(using = InstantToStringSerializer::class)
     override val occurredAt: Instant = Instant.now()
 ) : SquadfyEvent {
 

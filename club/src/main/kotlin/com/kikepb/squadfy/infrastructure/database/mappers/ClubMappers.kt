@@ -35,6 +35,7 @@ fun ClubMemberEntity.toClubMemberModel(username: String, email: String, profileP
         username = username,
         email = email,
         profilePictureUrl = profilePictureUrl,
+        clubPictureUrl = clubPictureUrl,
         shirtNumber = shirtNumber,
         position = position,
         role = role.toClubMemberRole(),

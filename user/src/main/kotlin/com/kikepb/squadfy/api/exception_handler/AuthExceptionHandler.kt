@@ -15,7 +15,7 @@ class AuthExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException::class)
     @ResponseStatus(HttpStatus.CONFLICT)
     fun onUserAlreadyExists(e: UserAlreadyExistsException) = mapOf(
-        "code" to "USER_EXITS",
+        "code" to "USER_EXISTS",
         "message" to e.message
     )
 

@@ -30,6 +30,7 @@ class MemberAbsenceService(
     private val matchRepository: MatchRepository,
     private val clubMatchScheduleRepository: ClubMatchScheduleRepository,
     private val matchAnnouncementService: MatchAnnouncementService,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -75,6 +76,7 @@ class MemberAbsenceService(
         if (matchIds.isNotEmpty()) {
             matchAnnouncementService.withdrawForAbsence(clubId = clubId, clubMemberId = memberId, matchIdsInAbsence = matchIds)
         }
+        liveUpdatePublisher.absencesChanged(clubId = clubId)
         return absence.toMemberAbsenceModel()
     }
 
@@ -86,6 +88,7 @@ class MemberAbsenceService(
             ?.takeIf { it.clubId == clubId && it.clubMemberId == memberId }
             ?: throw MemberAbsenceNotFoundException()
         memberAbsenceRepository.delete(absence)
+        liveUpdatePublisher.absencesChanged(clubId = clubId)
     }
 
     /** Members absent on the local date of a match, excluded from its opening and reminder pushes (RN-C3). */

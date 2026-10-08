@@ -41,6 +41,9 @@ class ClubMemberEntity(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     var userParticipant: ClubParticipantEntity? = null,
+    /** Picture of the member in this club (spec 012); null = the profile picture is shown. */
+    @Column(name = "club_picture_url", length = 512)
+    var clubPictureUrl: String? = null,
     @Column(name = "shirt_number")
     var shirtNumber: Int? = null,
     @Column(nullable = true)

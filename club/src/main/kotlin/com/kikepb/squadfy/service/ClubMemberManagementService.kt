@@ -14,6 +14,7 @@ import com.kikepb.squadfy.domain.model.ClubRolePolicy
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
 import com.kikepb.squadfy.domain.type.UserId
+import com.kikepb.squadfy.domain.user.ProfilePictureProvider
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity
 import com.kikepb.squadfy.infrastructure.database.entities.ClubMemberEntity.ClubMemberRoleEntity.OWNER
 import com.kikepb.squadfy.infrastructure.database.mappers.toClubMemberModel
@@ -34,6 +35,7 @@ class ClubMemberManagementService(
     private val clubRepository: ClubRepository,
     private val clubMemberRepository: ClubMemberRepository,
     private val clubParticipantService: ClubParticipantService,
+    private val profilePictureProvider: ProfilePictureProvider,
     private val clubMemberGuard: ClubMemberGuard,
     private val eventPublisher: EventPublisher,
     private val clock: Clock
@@ -189,7 +191,7 @@ class ClubMemberManagementService(
         return toClubMemberModel(
             username = participant.username,
             email = participant.email,
-            profilePictureUrl = participant.profilePictureUrl
+            profilePictureUrl = profilePictureProvider.findProfilePictures(listOf(userId))[userId]
         )
     }
 }

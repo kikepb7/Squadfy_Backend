@@ -6,12 +6,10 @@ plugins {
 
 dependencies {
     api(libs.kotlin.reflect)
-    api(libs.jackson.module.kotlin)
     api(libs.jackson3.module.kotlin)
 
     implementation(libs.spring.boot.starter.amqp)
     implementation(libs.spring.boot.starter.web)
-    implementation(libs.jackson.datatype)
 
     implementation(libs.spring.boot.starter.security)
 

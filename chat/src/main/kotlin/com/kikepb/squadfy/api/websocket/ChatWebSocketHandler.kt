@@ -3,7 +3,9 @@ package com.kikepb.squadfy.api.websocket
 import tools.jackson.core.JacksonException
 import com.kikepb.squadfy.api.dto.websocket.*
 import com.kikepb.squadfy.api.mappers.toChatMessageDto
+import com.kikepb.squadfy.domain.club.ClubMembershipProvider
 import com.kikepb.squadfy.domain.event.ChatCreatedEvent
+import com.kikepb.squadfy.domain.events.live.ClubDataChangedEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantLeftEvent
 import com.kikepb.squadfy.domain.event.ChatParticipantsJoinedEvent
 import com.kikepb.squadfy.domain.event.MessageDeletedEvent
@@ -14,6 +16,7 @@ import com.kikepb.squadfy.service.ChatMessageService
 import com.kikepb.squadfy.service.ChatService
 import com.kikepb.squadfy.service.JwtService
 import org.slf4j.LoggerFactory
+import org.springframework.context.event.EventListener
 import org.springframework.http.HttpHeaders
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -37,7 +40,8 @@ class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val chatMessageService: ChatMessageService,
     private val objectMapper: ObjectMapper,
-    private val jwtService: JwtService
+    private val jwtService: JwtService,
+    private val clubMembershipProvider: ClubMembershipProvider
 ): TextWebSocketHandler() {
 
     companion object {
@@ -285,6 +289,22 @@ class ChatWebSocketHandler(
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onChatCreated(event: ChatCreatedEvent) =
         updateChatForUsers(chatId = event.chatId, userIds = event.participantIds)
+
+    /** Spec 012 RN-A: connected members of the club are told what to reload (published after the commit). */
+    @EventListener
+    fun onClubDataChanged(event: ClubDataChangedEvent) {
+        val recipients = clubMembershipProvider.findAllMembers(clubId = event.clubId).map { it.userId }
+        val connected = connectionLock.read { recipients.filter { userToSessions.containsKey(it) } }
+        if (connected.isEmpty()) return
+
+        val message = OutgoingWebSocketMessage(
+            type = OutgoingWebSocketMessageType.CLUB_DATA_CHANGED,
+            payload = objectMapper.writeValueAsString(
+                ClubDataChangedDto(clubId = event.clubId, scope = event.scope, matchId = event.matchId)
+            )
+        )
+        connected.forEach { sendToUser(userId = it, message = message) }
+    }
 
     @Scheduled(fixedDelay = PING_INTERVAL_MS)
     fun pingClients() {

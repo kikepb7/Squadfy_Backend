@@ -23,6 +23,7 @@ import com.kikepb.squadfy.domain.model.MatchModel
 import com.kikepb.squadfy.domain.model.MatchModel.MatchStatus
 import com.kikepb.squadfy.domain.model.PlayerRatingCalculator
 import com.kikepb.squadfy.domain.model.PlayerStatsModel
+import com.kikepb.squadfy.domain.model.StatsPeriod
 import com.kikepb.squadfy.domain.model.StatsSortBy
 import com.kikepb.squadfy.domain.type.ClubId
 import com.kikepb.squadfy.domain.type.ClubMemberId
@@ -40,6 +41,7 @@ import org.springframework.context.annotation.Import
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -78,7 +80,8 @@ import kotlin.test.assertTrue
     MatchAnnouncementNotificationService::class,
     PlayerStatsService::class,
     MemberAbsenceService::class,
-    ScheduleExceptionService::class
+    ScheduleExceptionService::class,
+    LiveUpdatePublisher::class
 )
 class MatchFlowIntegrationTest {
 
@@ -488,6 +491,33 @@ class MatchFlowIntegrationTest {
         assertEquals(1, loser.losses)
         assertEquals(0, statsService.getMyStats(clubId = clubId, userId = owner).matchesPlayed)
         assertFailsWith<NotClubMemberException> { statsService.getClubStats(clubId, UUID.randomUUID(), StatsSortBy.GOALS) }
+    }
+
+    @Test
+    fun `statistics can be limited to a period of the club calendar (spec 012 CA-2)`() {
+        createThursdaySchedule(format = MatchFormat.FIVE_A_SIDE)
+        val october = nextMatch()
+        val players = enrollPlayers(announcementOf(october), count = 2)
+        teamService.generateTeams(october.id, owner, TeamGenerationMode.AUTO, null, null)
+        clock.now = madrid("2026-10-08T21:30")
+        matchService.completeMatch(matchId = october.id, userId = owner)
+
+        clock.now = madrid("2026-11-02T10:00")
+        val november = matchService.createMatch(clubId = clubId, userId = owner, scheduledAt = madrid("2026-11-12T20:00"), format = null)
+        players.forEach { announcementService.enroll(matchAnnouncementId = announcementOf(november).id, userId = it) }
+        teamService.generateTeams(november.id, owner, TeamGenerationMode.AUTO, null, null)
+        clock.now = madrid("2026-11-12T21:30")
+        matchService.completeMatch(matchId = november.id, userId = owner)
+
+        val player = players.first()
+        fun matchesPlayed(period: StatsPeriod) = statsService.getMyStats(clubId = clubId, userId = player, period = period).matchesPlayed
+
+        assertEquals(2, matchesPlayed(StatsPeriod.ALL))
+        assertEquals(1, matchesPlayed(StatsPeriod(from = LocalDate.parse("2026-10-01"), to = LocalDate.parse("2026-10-31"))))
+        assertEquals(1, matchesPlayed(StatsPeriod(from = LocalDate.parse("2026-11-01"), to = null)))
+        assertEquals(0, matchesPlayed(StatsPeriod(from = null, to = LocalDate.parse("2026-10-07"))))
+        val octoberRanking = statsService.getClubStats(clubId, owner, StatsSortBy.MATCHES, StatsPeriod(LocalDate.parse("2026-10-01"), LocalDate.parse("2026-10-31")))
+        assertEquals(1, octoberRanking.first().stats.matchesPlayed)
     }
 
     @Test

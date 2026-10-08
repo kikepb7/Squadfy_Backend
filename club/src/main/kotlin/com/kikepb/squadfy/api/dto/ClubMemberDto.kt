@@ -11,7 +11,10 @@ data class ClubMemberDto(
     val clubId: ClubId,
     val userId: UserId,
     val username: String,
+    /** Picture to show: [clubPictureUrl] if set, otherwise [profilePictureUrl]. */
+    val pictureUrl: String?,
     val profilePictureUrl: String?,
+    val clubPictureUrl: String?,
     val shirtNumber: Int?,
     val position: String?,
     val role: ClubMemberRole,

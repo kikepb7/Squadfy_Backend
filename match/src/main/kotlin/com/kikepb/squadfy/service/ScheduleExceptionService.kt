@@ -35,6 +35,7 @@ class ScheduleExceptionService(
     private val matchRepository: MatchRepository,
     private val matchService: MatchService,
     private val matchPlanningService: MatchPlanningService,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -100,6 +101,7 @@ class ScheduleExceptionService(
         }
         // A cancelled week lets the following one be planned right away.
         matchPlanningService.planNextMatch(schedule = schedule)
+        liveUpdatePublisher.scheduleChanged(clubId = clubId)
         return exception.toScheduleExceptionModel()
     }
 
@@ -120,6 +122,7 @@ class ScheduleExceptionService(
 
         scheduleExceptionRepository.delete(exception)
         scheduleExceptionRepository.flush()
+        liveUpdatePublisher.scheduleChanged(clubId = clubId)
 
         when (exception.type) {
             ExceptionType.CANCELLED -> when {

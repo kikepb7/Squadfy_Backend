@@ -16,6 +16,7 @@ interface ChatMessageRepository: JpaRepository<ChatMessageEntity, ChatMessageId>
     @Query("""
         SELECT m
         FROM ChatMessageEntity m
+        JOIN FETCH m.sender
         WHERE m.chatId = :chatId
         AND m.createdAt < :before
         ORDER BY m.createdAt DESC

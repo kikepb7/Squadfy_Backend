@@ -44,6 +44,7 @@ class MatchAnnouncementService(
     private val matchAnnouncementEntryRepository: MatchAnnouncementEntryRepository,
     private val matchRepository: MatchRepository,
     private val matchNotificationPublisher: MatchNotificationPublisher,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard,
     private val clock: Clock
 ) {
@@ -253,7 +254,10 @@ class MatchAnnouncementService(
 
     @Transactional
     fun cancelForMatch(matchId: MatchId) {
-        matchAnnouncementRepository.findByMatchId(matchId = matchId)?.let { it.status = CANCELLED }
+        matchAnnouncementRepository.findByMatchId(matchId = matchId)?.let {
+            it.status = CANCELLED
+            liveUpdatePublisher.matchChanged(clubId = it.clubId, matchId = matchId)
+        }
     }
 
     /** Brings back the announcement of a reactivated match: open again unless its close time passed. */
@@ -261,6 +265,7 @@ class MatchAnnouncementService(
     fun reactivateForMatch(matchId: MatchId) {
         val announcement = matchAnnouncementRepository.findByMatchId(matchId = matchId) ?: return
         announcement.status = if (announcement.closesAt.isAfter(clock.instant())) OPEN else CLOSED
+        liveUpdatePublisher.matchChanged(clubId = announcement.clubId, matchId = matchId)
     }
 
     /**
@@ -277,6 +282,7 @@ class MatchAnnouncementService(
         if (announcement.opensAt.isAfter(closesAt)) announcement.opensAt = now.coerceAtMost(closesAt)
         if (announcement.status == CLOSED && closesAt.isAfter(now)) announcement.status = OPEN
         if (drawAt.isAfter(now)) announcement.teamsPublishedAt = null
+        liveUpdatePublisher.matchChanged(clubId = announcement.clubId, matchId = matchId)
     }
 
     /** @return ids of the matches whose announcement has just been closed. */
@@ -286,7 +292,10 @@ class MatchAnnouncementService(
             status = OPEN,
             now = clock.instant()
         )
-        expired.forEach { it.status = CLOSED }
+        expired.forEach {
+            it.status = CLOSED
+            liveUpdatePublisher.matchChanged(clubId = it.clubId, matchId = it.matchId)
+        }
         return expired.map { it.matchId }
     }
 
@@ -339,6 +348,7 @@ class MatchAnnouncementService(
             promoted
         }
         matchAnnouncementEntryRepository.saveAllAndFlush(entries)
+        liveUpdatePublisher.matchChanged(clubId = announcement.clubId, matchId = announcement.matchId)
         if (promotedMembers.isEmpty()) return
 
         val match = matchRepository.findByIdOrNull(announcement.matchId) ?: return

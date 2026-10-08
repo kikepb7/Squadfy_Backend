@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class MatchEventService(
     private val matchService: MatchService,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val matchEventRepository: MatchEventRepository,
     private val matchTeamPlayerRepository: MatchTeamPlayerRepository,
     private val clubAccessGuard: ClubAccessGuard
@@ -48,13 +49,14 @@ class MatchEventService(
                 minute = minute
             )
         )
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
 
         return matchService.loadMatch(matchId = matchId)
     }
 
     @Transactional
     fun removeEvent(matchId: MatchId, userId: UserId, eventId: MatchEventId): MatchModel {
-        findEditableMatch(matchId = matchId, userId = userId)
+        val match = findEditableMatch(matchId = matchId, userId = userId)
 
         val event = matchEventRepository.findByIdOrNull(eventId)
             ?.takeIf { it.matchId == matchId }
@@ -62,6 +64,7 @@ class MatchEventService(
 
         matchEventRepository.delete(event)
         matchEventRepository.flush()
+        liveUpdatePublisher.matchChanged(clubId = match.clubId, matchId = matchId)
 
         return matchService.loadMatch(matchId = matchId)
     }

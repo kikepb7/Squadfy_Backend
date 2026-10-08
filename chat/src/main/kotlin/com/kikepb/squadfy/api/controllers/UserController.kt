@@ -2,6 +2,7 @@ package com.kikepb.squadfy.api.controllers
 
 import com.kikepb.squadfy.api.dto.ChatParticipantDto
 import com.kikepb.squadfy.api.mappers.toChatParticipantDto
+import com.kikepb.squadfy.api.util.requestUserId
 import com.kikepb.squadfy.domain.type.UserId
 import com.kikepb.squadfy.service.ChatParticipantService
 import io.swagger.v3.oas.annotations.Operation
@@ -27,6 +28,14 @@ class UserController(
     fun findUser(@RequestParam("query") query: String): ChatParticipantDto =
         chatParticipantService.findChatParticipantByEmailOrUsername(query = query)?.toChatParticipantDto()
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+
+    @GetMapping("/search")
+    @Operation(
+        summary = "Search users: usernames containing q (case-insensitive) or the exact email; up to 20, never yourself",
+        description = "q needs at least 2 characters (400). Usernames starting with q come first."
+    )
+    fun searchUsers(@RequestParam("q") q: String): List<ChatParticipantDto> =
+        chatParticipantService.searchParticipants(query = q, requestUserId = requestUserId).map { it.toChatParticipantDto() }
 
     @GetMapping("/{userId}")
     @Operation(summary = "Public profile of a user (use the id from GET /api/v1/me for your own picture)")

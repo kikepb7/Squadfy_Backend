@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase
 import org.springframework.boot.test.context.TestConfiguration
+import com.kikepb.squadfy.domain.user.ProfilePictureProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -56,6 +57,9 @@ class ClubMemberManagementIntegrationTest {
 
     @TestConfiguration
     class TestBeans {
+        @Bean
+        fun profilePictureProvider() = ProfilePictureProvider { emptyMap() }
+
         @Bean
         fun clock(): Clock = Clock.systemUTC()
 

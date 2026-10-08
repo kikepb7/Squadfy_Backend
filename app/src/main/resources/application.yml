@@ -42,11 +42,10 @@ spring:
     baseline-version: 1
 
   jpa:
+    # Spec 012 RN-F2: no database access outside the service layer
+    open-in-view: false
     hibernate:
       ddl-auto: validate
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   data:
     redis:

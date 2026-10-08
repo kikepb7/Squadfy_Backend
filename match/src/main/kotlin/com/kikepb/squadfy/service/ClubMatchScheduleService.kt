@@ -23,6 +23,7 @@ import java.time.ZoneId
 class ClubMatchScheduleService(
     private val clubMatchScheduleRepository: ClubMatchScheduleRepository,
     private val matchPlanningService: MatchPlanningService,
+    private val liveUpdatePublisher: LiveUpdatePublisher,
     private val clubAccessGuard: ClubAccessGuard
 ) {
 
@@ -63,6 +64,7 @@ class ClubMatchScheduleService(
         ).toClubMatchScheduleModel()
 
         matchPlanningService.planNextMatch(schedule = schedule)
+        liveUpdatePublisher.scheduleChanged(clubId = clubId)
         return schedule
     }
 
@@ -112,6 +114,7 @@ class ClubMatchScheduleService(
 
         val schedule = clubMatchScheduleRepository.saveAndFlush(entity).toClubMatchScheduleModel()
         if (schedule.isActive) matchPlanningService.planNextMatch(schedule = schedule)
+        liveUpdatePublisher.scheduleChanged(clubId = clubId)
         return schedule
     }
 

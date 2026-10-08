@@ -117,6 +117,24 @@ class ClubController(
             mimeType = clubLogo.contentType ?: "image/jpeg"
         ).toClubDto()
 
+    @PutMapping("/{clubId}/members/me/picture", consumes = ["multipart/form-data"])
+    @Operation(summary = "Upload my picture for this club (jpeg/png/webp); part name `picture`. Shown instead of the profile picture")
+    fun uploadMyClubPicture(
+        @PathVariable("clubId") clubId: ClubId,
+        @RequestPart("picture") picture: MultipartFile
+    ): ClubMemberDto =
+        clubService.updateMyClubPicture(
+            clubId = clubId,
+            userId = requestUserId,
+            bytes = picture.bytes,
+            mimeType = picture.contentType ?: "image/jpeg"
+        ).toClubMemberDto()
+
+    @DeleteMapping("/{clubId}/members/me/picture")
+    @Operation(summary = "Remove my picture for this club; the profile picture is shown again")
+    fun deleteMyClubPicture(@PathVariable("clubId") clubId: ClubId): ClubMemberDto =
+        clubService.deleteMyClubPicture(clubId = clubId, userId = requestUserId).toClubMemberDto()
+
     @PostMapping("/{clubId}/invitation-code")
     @Operation(summary = "Generate a new invitation code (managers only); the previous one stops working")
     fun regenerateInvitationCode(@PathVariable("clubId") clubId: ClubId): InvitationCodeDto =

@@ -16,9 +16,10 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Chat WebSocket protocol: bearer handshake and error envelope for malformed messages. */
+/** WebSocket protocol: bearer handshake, error envelope for malformed messages and live club updates (spec 012). */
 @SpringBootTest(
     webEnvironment = RANDOM_PORT,
     properties = [
@@ -63,6 +64,44 @@ class ChatWebSocketIntegrationTest : ApiIntegrationTestSupport() {
         assertEquals("INVALID_JSON", ObjectMapper().readTree(envelope["payload"].asText())["code"].asText())
         assertTrue(!socket.isOutputClosed && !socket.isInputClosed)
         socket.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(5, TimeUnit.SECONDS)
+    }
+
+    private fun connect(token: String, listener: CollectingListener): WebSocket =
+        HttpClient.newHttpClient().newWebSocketBuilder()
+            .header("Authorization", "Bearer $token")
+            .buildAsync(URI.create("ws://localhost:$serverPort/ws/chat"), listener)
+            .get(10, TimeUnit.SECONDS)
+
+    @Test
+    fun `CA-1 connected members are told once to reload a match when someone enrolls`() {
+        val (clubId, code, ownerToken) = newClub("Live FC")
+        val (_, playerToken) = newUser()
+        val (_, outsiderToken) = newUser()
+        call("POST", "/api/v1/clubs/join", playerToken, """{"invitationCode":"$code"}""")
+        call("POST", "/api/v1/clubs/$clubId/schedule", ownerToken, """{"matchDayOfWeek":"THURSDAY","matchTime":"20:00:00","format":"FIVE_A_SIDE"}""")
+        val current = call("GET", "/api/v1/clubs/$clubId/announcements/current", ownerToken).json
+        val announcementId = current["announcement"]["id"].asText()
+        val matchId = current["announcement"]["matchId"].asText()
+
+        val owner = CollectingListener()
+        val outsider = CollectingListener()
+        val ownerSocket = connect(ownerToken, owner)
+        val outsiderSocket = connect(outsiderToken, outsider)
+
+        assertEquals(200, call("POST", "/api/v1/announcements/$announcementId/enrollment", playerToken).status)
+
+        val received = assertNotNull(owner.messages.poll(10, TimeUnit.SECONDS), "No live update for the member")
+        val envelope = ObjectMapper().readTree(received)
+        assertEquals("CLUB_DATA_CHANGED", envelope["type"].asText())
+        val payload = ObjectMapper().readTree(envelope["payload"].asText())
+        assertEquals(clubId, payload["clubId"].asText())
+        assertEquals("MATCH", payload["scope"].asText())
+        assertEquals(matchId, payload["matchId"].asText())
+        assertNull(owner.messages.poll(1, TimeUnit.SECONDS), "One operation must produce a single notice")
+        assertNull(outsider.messages.poll(1, TimeUnit.SECONDS), "Users of other clubs are not notified")
+
+        ownerSocket.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(5, TimeUnit.SECONDS)
+        outsiderSocket.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(5, TimeUnit.SECONDS)
     }
 
     @Test
