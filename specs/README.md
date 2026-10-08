@@ -33,5 +33,6 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [010](010-account-deletion-rate-limits/spec.md) | Borrado de cuenta (app + web) y rate limit por cuenta | Hecha | Sí (publicación en tiendas) |
 | [011](011-feature-flags/spec.md) | Feature flags (verificación de email opcional), página de verificación, baja de dispositivos propia | Hecha | — |
 | [012](012-mvp-completion/spec.md) | Cierre del MVP: tiempo real, estadísticas por periodo, foto por club, búsqueda de usuarios, deuda técnica | Hecha | — |
+| [013](013-deploy-render/spec.md) | Despliegue en Render (staging/prod), flujo de ramas, CORS, IP real tras proxy | En curso | Solo falta alta de cuentas |
 
 Análisis inicial del repositorio: [`docs/analysis/2026-10-05-analisis-repositorio.md`](../docs/analysis/2026-10-05-analisis-repositorio.md).

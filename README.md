@@ -52,3 +52,7 @@ El esquema lo gestiona Flyway (`app/src/main/resources/db/migration`); Hibernate
 
 - Specs (Spec-Driven Development): [`specs/README.md`](specs/README.md) y [`specs/constitution.md`](specs/constitution.md).
 - Análisis inicial: [`docs/analysis/2026-10-05-analisis-repositorio.md`](docs/analysis/2026-10-05-analisis-repositorio.md).
+
+
+## Despliegue
+Render (staging = rama `release`, producción = `master`; `develop` = integración). Flujo de ramas, Supabase, secretos y pasos: [`docs/DEPLOY.md`](docs/DEPLOY.md).
