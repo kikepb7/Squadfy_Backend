@@ -34,6 +34,8 @@ class DeviceTokenController(
         ).toDeviceTokenDto()
 
     @DeleteMapping("/{token}")
-    fun unregisterDeviceToken(@PathVariable("token") token: String) =
-        pushNotificationService.unregisterDevice(token = token)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun unregisterDeviceToken(@PathVariable("token") token: String) {
+        pushNotificationService.unregisterDevice(userId = requestUserId, token = token)
+    }
 }

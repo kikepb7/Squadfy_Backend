@@ -25,8 +25,11 @@ class SecurityConfig {
                     .authenticated()
                     .requestMatchers("/", "/api/v1/auth/**")
                     .permitAll()
-                    // Spec 010: public account deletion page (its form calls /api/v1/auth/delete-account)
-                    .requestMatchers("/account/delete", "/account/delete.html")
+                    // Public pages: account deletion (spec 010) and email verification (spec 011)
+                    .requestMatchers("/account/delete", "/account/delete.html", "/account/verify-email", "/account/verify-email.html")
+                    .permitAll()
+                    // Spec 011: feature flags, read by the app before logging in
+                    .requestMatchers("/api/v1/features")
                     .permitAll()
                     // API docs: only served when springdoc is enabled (dev profile), otherwise 404
                     .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**")

@@ -33,7 +33,7 @@ Decisiones de producto (2026-10-08): propiedad de clubes **transferida automáti
   | Registro | — (cada registro es una cuenta nueva) | 50/h |
   | Borrado de cuenta | 5/h por usuario (app) o por email (web) | 50/h (web) |
 - **RN-B2**: Al superar un límite se responde **429** con `{code: "RATE_LIMIT_EXCEEDED", message}` y la cabecera `Retry-After` en segundos.
-- **RN-B3**: Los límites se activan con `RATE_LIMIT_ENABLED` (activos en `prod`, apagados por defecto en local y tests).
+- **RN-B3**: Los límites se activan con el feature flag `rate-limit` (`FEATURE_RATE_LIMIT`, spec 011): activos en `prod`, apagados por defecto en local y tests.
 
 ## Criterios de aceptación
 - **CA-1** (RN-A1): Dado un usuario autenticado, cuando llama a `DELETE /me` con una contraseña incorrecta, entonces recibe 401 y su cuenta sigue funcionando.

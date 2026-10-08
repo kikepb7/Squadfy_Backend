@@ -45,7 +45,7 @@ class EmailService(
         logger.info("Sending verification email for user $userId")
 
         val verificationUrl = UriComponentsBuilder
-            .fromUriString("$baseUrl/api/v1/auth/verify")
+            .fromUriString("$baseUrl/account/verify-email")
             .queryParam("token", token)
             .build()
             .toUriString()

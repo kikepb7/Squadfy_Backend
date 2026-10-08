@@ -1,5 +1,6 @@
 package com.kikepb.squadfy.service
 
+import com.kikepb.squadfy.domain.exception.DeviceTokenNotFoundException
 import com.kikepb.squadfy.domain.exception.InvalidDeviceTokenException
 import com.kikepb.squadfy.domain.model.DeviceTokenModel
 import com.kikepb.squadfy.domain.model.PushNotificationModel
@@ -79,8 +80,13 @@ class PushNotificationService(
         return entity.toDeviceTokenModel()
     }
 
+    /** Only the owner can unregister a device; someone else's token looks like a missing one (spec 011 RN-C1). */
     @Transactional
-    fun unregisterDevice(token: String) = deviceTokenRepository.deleteByToken(token = token.trim())
+    fun unregisterDevice(userId: UserId, token: String) {
+        val device = deviceTokenRepository.findByToken(token = token.trim())?.takeIf { it.userId == userId }
+            ?: throw DeviceTokenNotFoundException()
+        deviceTokenRepository.delete(device)
+    }
 
     @Transactional
     fun sendNewMessageNotifications(

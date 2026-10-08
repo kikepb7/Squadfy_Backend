@@ -286,6 +286,27 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
     }
 
     @Test
+    fun `CA-6 a user can only unregister their own devices`() {
+        val (ownerId, ownerToken) = newUser()
+        val (_, otherToken) = newUser()
+        val token = "device-${UUID.randomUUID()}"
+        jdbcTemplate.update(
+            "INSERT INTO notification_service.device_token (user_id, token, platform, created_at) VALUES (?, ?, 'IOS', now())",
+            ownerId, token
+        )
+        fun devices() = jdbcTemplate.queryForObject("SELECT count(*) FROM notification_service.device_token WHERE token = ?", Int::class.java, token)
+
+        val stolen = call("DELETE", "/api/v1/devices/$token", otherToken)
+        assertEquals(404, stolen.status)
+        assertEquals("NOT_FOUND", stolen.json["code"].asText())
+        assertEquals(1, devices())
+        assertEquals(404, call("DELETE", "/api/v1/devices/unknown-token", ownerToken).status)
+
+        assertEquals(204, call("DELETE", "/api/v1/devices/$token", ownerToken).status)
+        assertEquals(0, devices())
+    }
+
+    @Test
     fun `missing auth details are a 401, never a 429`() {
         val handler = handlerMapping.handlerMethods.values.first { it.beanType.simpleName == "MeController" && it.method.name == "getMe" }
         val response = MockHttpServletResponse()

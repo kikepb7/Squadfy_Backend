@@ -20,7 +20,7 @@
 - `RateLimiter` genérico (Redis + script Lua existente) con claves `rate_limit:<ámbito>:<id>`; `IpRateLimiter` pasa a usarlo.
 - `AuthRateLimits` (api) aplica los límites de RN-B1 antes de llamar al servicio: refresh por `sub` del token (si la firma es válida) o por IP, login por email, borrado por usuario/email.
 - El interceptor por IP lanza `RateLimitException` en vez de `sendError`, para que el `@ExceptionHandler` devuelva `{code, message}` + `Retry-After`.
-- Propiedad `squadfy.rate-limit.enabled` (`RATE_LIMIT_ENABLED`).
+- Feature flag `rate-limit` (`FEATURE_RATE_LIMIT`; spec 011).
 
 ## Modelo de datos
 Sin migración: se reutilizan las tablas existentes (anonimizar y borrar).

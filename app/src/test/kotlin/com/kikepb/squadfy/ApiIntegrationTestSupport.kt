@@ -52,8 +52,8 @@ abstract class ApiIntegrationTestSupport {
     }
 
     /**
-     * A user registered and logged in through the API, so every module knows them (needs email
-     * verification disabled). Returns (userId, email, tokens of the login).
+     * A user registered and logged in through the API, so every module knows them (needs the
+     * `email-verification` feature flag off, the default). Returns (userId, email, tokens of the login).
      */
     protected fun registerUser(password: String = TEST_PASSWORD): RegisteredUser {
         val name = "r${UUID.randomUUID().toString().take(10)}"

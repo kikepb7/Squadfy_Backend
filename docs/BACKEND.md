@@ -43,7 +43,8 @@ Backend para gestionar **clubes de fútbol amateur**:
 
 | Área | Estado |
 |---|---|
-| Autenticación (registro, verificación por email, login, refresh, reset/cambio de contraseña) | ✅ |
+| Autenticación (registro, verificación por email opcional, login, refresh, reset/cambio de contraseña) | ✅ |
+| Feature flags por entorno (`FEATURE_*`, `GET /features`; spec 011) | ✅ |
 | Borrado de cuenta desde la app y desde la web (`/account/delete`), rate limit por cuenta (spec 010) | ✅ |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
@@ -57,7 +58,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Docker, Flyway, CI (GitHub Actions), health checks | ✅ |
 | **Despliegue** (elegir hosting, registro de imágenes, CD) | ⏳ pendiente |
 
-Calidad: `./gradlew build` ejecuta ~130 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
+Calidad: `./gradlew build` ejecuta ~135 tests (unitarios + integración con PostgreSQL, RabbitMQ, Redis y Mailpit reales vía Testcontainers).
 
 ---
 
@@ -147,9 +148,20 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 | `FIREBASE_ENABLED` | `true` | `false` = no se envían push (útil en local) |
 | `FIREBASE_CREDENTIALS_PATH` | `classpath:firebase-credentials/squadfy-backend-firebase-adminsdk.json` | Service account (en Docker: `file:/run/secrets/...`) |
 | `FIREBASE_ANDROID_PACKAGE` | vacío | Si se define, solo ese `applicationId` de Android recibe push |
-| `RATE_LIMIT_ENABLED` | `false` (`true` en `prod`) | Límites por cuenta y por IP de los endpoints de auth (spec 010) |
+| `FEATURE_EMAIL_VERIFICATION` | `false` (también en `prod`) | Feature flag: exigir verificar el email antes de entrar (antes `EMAIL_VERIFICATION_ENABLED`, que se sigue leyendo) |
+| `FEATURE_RATE_LIMIT` | `false` (`true` en `prod`) | Feature flag: límites por cuenta y por IP de los endpoints de auth, spec 010 (antes `RATE_LIMIT_ENABLED`) |
 | `NGINX_REQUIRE_PROXY` | `true` (`false` en `dev`) | Exigir IP real vía proxy de confianza |
 | `DB_POOL_SIZE` | `10` | Conexiones a la BD |
+
+### Feature flags (spec 011)
+Cada función desactivable es un flag `squadfy.features.<nombre>`, configurable con `FEATURE_<NOMBRE>=true|false`. Un nombre desconocido impide arrancar (evita erratas). La app lee el estado efectivo con `GET /api/v1/features` (público).
+
+| Flag | Defecto | Efecto |
+|---|---|---|
+| `email-verification` | apagado (también en `prod`) | Exige verificar el email antes de entrar |
+| `rate-limit` | apagado; encendido en `prod` | Límites por cuenta y por IP de auth (spec 010) |
+
+Para añadir uno: nueva entrada en el enum `Feature` (`common`), declararlo en `application.yml` y consultarlo con `FeatureFlags.isEnabled(...)`.
 
 ---
 
@@ -178,9 +190,10 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 - **Refresh token** (JWT): **30 días**. Se **rota** en cada `refresh` (el anterior deja de valer). `logout` lo invalida. Cambiar o restablecer la contraseña **cierra todas las sesiones** (invalida todos los refresh tokens).
 
 ### Flujos
-1. **Registro**: `POST /auth/register {email, username, password}` → `UserDto` con `hasVerifiedEmail=false`. Se envía un email con un enlace `GET {APP_PUBLIC_URL}/api/v1/auth/verify?token=...` (24 h de validez; al abrirlo en el navegador responde 200 sin contenido).
-2. **Login**: `POST /auth/login {email, password}` → `{user, accessToken, refreshToken}`. Si el email no está verificado → **403 `EMAIL_NOT_VERIFIED`** (ofrecer "reenviar email": `POST /auth/resend-verification {email}`).
-   - **App config (spec 009)**: con `EMAIL_VERIFICATION_ENABLED=false` (`squadfy.app-config.email-verification.enabled`), el registro deja al usuario verificado sin enviar correo y el login no exige verificación. Es solo para pruebas locales o de QA; en el perfil `prod` está fijado a `true`.
+1. **Registro**: `POST /auth/register {email, username, password}` → `UserDto`.
+   - **Por defecto (también en producción) no hay que verificar el email** (feature flag `email-verification` desactivado): el usuario queda con `hasVerifiedEmail=true`, no se envía correo y puede entrar al momento. La app debe consultar `GET /features` y, con el flag apagado, ir directamente al login (o loguear tras registrar) sin mostrar «revisa tu email».
+   - Con `FEATURE_EMAIL_VERIFICATION=true`: `hasVerifiedEmail=false` y se envía un correo con el enlace `{APP_PUBLIC_URL}/account/verify-email?token=...` (24 h). Es una página web que verifica el email y dice si se ha verificado, si el enlace caducó o si ya se usó.
+2. **Login**: `POST /auth/login {email, password}` → `{user, accessToken, refreshToken}`. Solo con `email-verification` activado y el email sin verificar → **403 `EMAIL_NOT_VERIFIED`** (ofrecer "reenviar email": `POST /auth/resend-verification {email}`).
 3. **Refresh**: `POST /auth/refresh {refreshToken}` → nuevo par de tokens. Token inválido/caducado/ya usado → **401 `INVALID_TOKEN`** (mandar al login).
 4. **Logout**: `POST /auth/logout {refreshToken}` (y `DELETE /devices/{token}` para dejar de recibir push).
 5. **Olvidé la contraseña**: `POST /auth/forgot-password {email}` (responde 200 aunque el email no exista). El email abre `RESET_PASSWORD_URL?token=...` (por defecto el deep link **`squadfy://reset-password?token=...`**, 30 min de validez). La app captura el deep link, pide la nueva contraseña y llama `POST /auth/reset-password {token, newPassword}`.
@@ -195,7 +208,7 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 
 ### Validaciones
 - `email` válido; `username` 3–20 caracteres (único); `password` ≥ 8 caracteres con al menos un dígito o carácter especial.
-- **Rate limiting** (si `RATE_LIMIT_ENABLED`, activo en `prod`; spec 010). Los límites son **por cuenta**, así que varios jugadores en el mismo wifi no se bloquean entre sí; el límite por IP es solo una red de seguridad:
+- **Rate limiting** (feature flag `rate-limit`, activo en `prod`; spec 010). Los límites son **por cuenta**, así que varios jugadores en el mismo wifi no se bloquean entre sí; el límite por IP es solo una red de seguridad:
 
   | Operación | Por cuenta | Por IP |
   |---|---|---|
@@ -285,7 +298,8 @@ Permisos: **público** (sin token), **auth** (cualquier usuario autenticado), **
 | POST | `/auth/refresh` | público | `{refreshToken}` | `AuthenticatedUserDto` |
 | POST | `/auth/logout` | público | `{refreshToken}` | 200 vacío |
 | POST | `/auth/resend-verification` | público | `{email}` | 200 vacío |
-| GET | `/auth/verify?token=` | público | — | 200 vacío (enlace del email) |
+| GET | `/auth/verify?token=` | público | — | 200 vacío (lo llama la página `/account/verify-email`; enlaces antiguos) |
+| GET | `/features` | público | — | `{"email-verification": false, "rate-limit": true}` (feature flags del entorno) |
 | POST | `/auth/forgot-password` | público | `{email}` | 200 vacío |
 | POST | `/auth/reset-password` | público | `{token, newPassword}` | 200 vacío |
 | POST | `/auth/change-password` | auth | `{oldPassword, newPassword}` | 200 vacío |
@@ -381,7 +395,7 @@ Foto de perfil: `mimeType` ∈ `image/jpeg`, `image/png`, `image/webp`. 1) pedir
 | Método | Ruta | Permiso | Cuerpo | Respuesta |
 |---|---|---|---|---|
 | POST | `/devices` | auth | `{token, platform: ANDROID\|IOS}` | **201** `DeviceTokenDto` |
-| DELETE | `/devices/{token}` | auth | — | 200 |
+| DELETE | `/devices/{token}` | auth (propio) | — | **204**; 404 si no existe o es de otro usuario |
 | GET | `/clubs/{clubId}/notification-settings` | miembro | — | `{clubId, muted}` |
 | PUT | `/clubs/{clubId}/notification-settings` | miembro | `{muted}` | `{clubId, muted}` |
 
@@ -559,7 +573,7 @@ Formato: `{ "code": "...", "message": "..." }`. El `message` está en inglés y 
 | 403 | `FORBIDDEN` | Sin permiso (no gestor, jerarquía, no participante del chat) |
 | 403 | `NOT_CLUB_MEMBER` | Operación de partidos/convocatorias en un club del que no eres miembro |
 | 403 | `BANNED_FROM_CLUB` | Unirse a un club que te ha vetado |
-| 403 | `EMAIL_NOT_VERIFIED` | Login sin verificar el email |
+| 403 | `EMAIL_NOT_VERIFIED` | Login sin verificar el email (solo con el flag `email-verification` activado) |
 | 404 | `NOT_FOUND` / `USER_NOT_FOUND` | Recurso inexistente |
 | 409 | `CONFLICT` | Ya apuntado, ya miembro, club lleno, horario ya existe, estado del partido no permite la acción, owner que intenta salir, datos duplicados |
 | 409 | `USER_EXITS` | Registro con email o username ya usados (sic, ver §16) |
@@ -643,7 +657,8 @@ Apertura y recordatorio se envían **una sola vez** por convocatoria. Silenciar 
 ### Pantallas y llamadas sugeridas
 | Pantalla | Llamadas |
 |---|---|
-| Registro / verificación | `POST /auth/register` → aviso "revisa tu email"; login devuelve 403 `EMAIL_NOT_VERIFIED` hasta verificar; botón `POST /auth/resend-verification` |
+| Arranque | `GET /features` (sin sesión) para saber qué funciones están activas en este entorno |
+| Registro / verificación | `POST /auth/register`; si `email-verification` está activado, aviso "revisa tu email", el login devuelve 403 `EMAIL_NOT_VERIFIED` hasta verificar y hay botón `POST /auth/resend-verification`; si no, entrar directamente |
 | Login / sesión | `POST /auth/login`, guardar tokens, `GET /me`, registrar dispositivo FCM |
 | Reset de contraseña | `POST /auth/forgot-password`; deep link `squadfy://reset-password?token=` → `POST /auth/reset-password` |
 | Mis clubes | `GET /clubs`; crear `POST /clubs`; unirse `POST /clubs/join` (manejar 400 código inválido, 403 vetado, 409 ya miembro/lleno) |
@@ -684,6 +699,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 10. **Push de chat**: el título es ahora el nombre del remitente.
 11. **Spec 008 (paridad con la app)**: invitados en la convocatoria (entradas con `participantType`), excepciones del calendario, ausencias, `closeTime`/`drawTime` configurables (`drawAt` en la convocatoria), marcador manual oficial y `ratingChanges` por partido. **Se retira la valoración manual** (el nivel es el rating automático). La foto por club queda en backlog.
 12. **Spec 010**: borrado de cuenta (`DELETE /me {password}` y página web `/account/delete`) y rate limit por cuenta con `Retry-After`.
+13. **Spec 011**: feature flags (`GET /features`); **la verificación de email deja de ser obligatoria** por defecto; el correo de verificación (si se activa) abre la página `/account/verify-email`; `DELETE /devices/{token}` responde 204 y solo borra dispositivos propios.
 
 ---
 
@@ -693,9 +709,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 |---|---|
 | Despliegue | Falta elegir hosting; la imagen Docker y la CI están listas. Servicios gestionados: Supabase (PostgreSQL + Storage), CloudAMQP, Redis Cloud, Mailgun, Firebase |
 | Código `USER_EXITS` | Errata histórica de `USER_EXISTS`; se mantiene por compatibilidad hasta acordar el cambio |
-| Verificación de email | El enlace abre `GET /api/v1/auth/verify` en el navegador y responde 200 vacío (sin página de confirmación) |
 | Tiempo real | Convocatorias y partidos no se emiten por WebSocket; la app refresca al abrir o al recibir push |
-| Dispositivos | `DELETE /devices/{token}` no comprueba que el token sea del usuario (riesgo bajo: hay que conocer el token FCM) |
 | Búsqueda de usuarios | `GET /users?query=` busca coincidencia exacta de username o email |
 | Estadísticas | Sin filtros por temporada/fechas |
 | Foto por club | En backlog (spec 008): la foto es la del perfil del usuario |

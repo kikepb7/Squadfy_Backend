@@ -16,8 +16,7 @@ import kotlin.test.assertTrue
     properties = [
         "jwt.secret=c3F1YWRmeS10ZXN0LXNlY3JldC1zcXVhZGZ5LXRlc3Qtc2VjcmV0LTEyMzQ1Ng==",
         "firebase.enabled=false",
-        "squadfy.app-config.email-verification.enabled=false",
-        "squadfy.rate-limit.enabled=true",
+        "squadfy.features.rate-limit=true",
         "nginx.require-proxy=false"
     ]
 )

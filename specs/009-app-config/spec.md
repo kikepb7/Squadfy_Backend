@@ -1,6 +1,6 @@
 # 009 — App config: verificación de email desactivable
 
-- **Estado**: Hecha
+- **Estado**: Sustituida por [011](../011-feature-flags/spec.md) (2026-10-08): el interruptor es ahora el flag `email-verification`, desactivado por defecto también en producción (deja de aplicar RN-4)
 - **Módulos**: user, app (configuración)
 - **Dependencias**: —
 

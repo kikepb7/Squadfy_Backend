@@ -124,14 +124,13 @@ jwt:
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
 
 squadfy:
-  # Functional switches (spec 009). Production pins them in application-prod.yml.
-  app-config:
-    email-verification:
-      # Require verifying the email before logging in. Set EMAIL_VERIFICATION_ENABLED=false only for local/QA tests.
-      enabled: ${EMAIL_VERIFICATION_ENABLED:true}
-  rate-limit:
-    # Spec 010 RN-B3: per-account and per-IP limits of the auth endpoints (on in prod)
-    enabled: ${RATE_LIMIT_ENABLED:false}
+  # Feature flags (spec 011): FEATURE_<NAME>=true|false. Unknown names stop the application.
+  # The legacy variables EMAIL_VERIFICATION_ENABLED and RATE_LIMIT_ENABLED are still read as fallback.
+  features:
+    # Users must verify their email before logging in
+    email-verification: ${FEATURE_EMAIL_VERIFICATION:${EMAIL_VERIFICATION_ENABLED:false}}
+    # Per-account and per-IP limits of the auth endpoints (spec 010); on in prod
+    rate-limit: ${FEATURE_RATE_LIMIT:${RATE_LIMIT_ENABLED:false}}
   email:
     from: ${MAIL_FROM:no-reply@squadfy.local}
     url: ${APP_PUBLIC_URL:http://localhost:8080}

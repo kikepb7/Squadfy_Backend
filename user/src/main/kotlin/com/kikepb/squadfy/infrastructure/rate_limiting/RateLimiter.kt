@@ -1,6 +1,8 @@
 package com.kikepb.squadfy.infrastructure.rate_limiting
 
 import com.kikepb.squadfy.domain.exception.RateLimitException
+import com.kikepb.squadfy.domain.feature.Feature
+import com.kikepb.squadfy.infrastructure.config.FeatureFlags
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -11,14 +13,15 @@ import java.time.Duration
 /**
  * Fixed-window counter in Redis shared by every instance (spec 010 RN-B). Each limit has its own
  * scope (`login:email`, `refresh:user`, `ip:login`…), so limits never share a counter.
- * Disabled with `squadfy.rate-limit.enabled=false` (local and tests).
+ * Switched on and off with the `rate-limit` feature flag (spec 011; on in prod).
  */
 @Component
 class RateLimiter(
     private val redisTemplate: StringRedisTemplate,
-    @param:Value("\${squadfy.rate-limit.enabled}")
-    val enabled: Boolean
+    private val featureFlags: FeatureFlags
 ) {
+
+    val enabled: Boolean get() = featureFlags.isEnabled(Feature.RATE_LIMIT)
 
     @Value("classpath:rate_limit.lua")
     lateinit var rateLimitResource: Resource
