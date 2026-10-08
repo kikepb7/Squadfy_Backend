@@ -20,7 +20,7 @@ class CorsConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
-            allowedOriginPatterns = allowedOrigins.map { it.trim() }.filter { it.isNotEmpty() }
+            setAllowedOriginPatterns(this@CorsConfig.allowedOrigins.map { it.trim() }.filter { it.isNotEmpty() })
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type", "Accept")
             exposedHeaders = listOf("Retry-After")
