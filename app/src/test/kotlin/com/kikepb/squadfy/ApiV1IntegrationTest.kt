@@ -318,6 +318,17 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
     }
 
     @Test
+    fun `actuator info shows the version of gradle properties (spec 013 CA-7)`() {
+        val expected = java.io.File("../gradle.properties").readLines()
+            .first { it.startsWith("version=") }.substringAfter("=")
+
+        val info = call("GET", "/actuator/info")
+
+        assertEquals(200, info.status, info.body)
+        assertEquals(expected, info.json["build"]["version"].asText())
+    }
+
+    @Test
     fun `every REST endpoint lives under api v1`() {
         val allowedOutsideV1 = listOf("/error", "/v3/api-docs", "/swagger-ui")
         val paths = handlerMapping.handlerMethods.keys.flatMap { it.patternValues }

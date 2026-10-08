@@ -80,6 +80,21 @@ Las que pones tú: `DB_*`, `REDIS_*`, `RABBITMQ_HOST/USERNAME/PASSWORD/VHOST`, `
 
 1. `git switch -c feature/<x> develop` → cambios → PR a `develop` (CI: build + tests + imagen).
 2. Cuando `develop` está listo: PR `develop → release`. Al fusionar, el CI corre y Render despliega staging.
-3. Se prueba en staging. PR `release → master`. Al fusionar y pasar el CI, Render despliega producción.
-4. Un hotfix urgente: rama desde `master`, PR a `master` y después PR de vuelta a `release` y `develop` para no perderlo.
+3. Se prueba en staging. PR `release → master`. Al fusionar y pasar el CI, Render despliega producción y se crea la versión (ver §9).
+4. Un hotfix urgente: rama `hotfix/<x>` desde `master`, subir la versión de parche (`1.0.0` → `1.0.1`), PR a `master` y después PR de vuelta a `release` y `develop` para no perderlo.
+
+| Rama | Sale de | Entra en | Despliegue |
+|---|---|---|---|
+| `feature/<x>` | `develop` | `develop` (PR) | — |
+| `develop` | — | `release` (PR) | — (integración) |
+| `release` | — | `master` (PR) | staging |
+| `master` | — | — | producción + etiqueta `vX.Y.Z` |
+| `hotfix/<x>` | `master` | `master`, luego `release` y `develop` | producción |
+
+## 9. Versiones
+
+- La versión vive en `gradle.properties` (`version=X.Y.Z`) y es la de la **próxima** release. Se ve en `GET /actuator/info` (`build.version`) para saber qué hay desplegado en cada entorno.
+- Cada fusión en `master` es una release: el workflow `release-tag.yml` crea la etiqueta `vX.Y.Z` y una GitHub Release con las PR incluidas como notas.
+- El CI bloquea una PR a `master` si su versión ya está publicada (job **Version not released yet**), así no se pisa una etiqueta.
+- Tras cada release, sube la versión en `develop` al empezar el siguiente ciclo: `MAJOR` si rompe la API de la app, `MINOR` para funciones nuevas, `PATCH` para correcciones.
 5. Rollback: Render → servicio → Events → "Rollback" al deploy anterior (las migraciones aplicadas no se revierten: toda migración debe ser compatible con la versión anterior del código).

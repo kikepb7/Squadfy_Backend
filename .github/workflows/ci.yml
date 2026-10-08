@@ -61,3 +61,23 @@ jobs:
           tags: squadfy-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  version:
+    name: Version not released yet
+    # Only on pull requests to master: the version must be new, so the merge gets its own tag
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag does not exist
+        run: |
+          TAG="v$(grep -E '^version=' gradle.properties | cut -d= -f2)"
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            echo "::error::$TAG is already released. Bump version in gradle.properties (on develop) before releasing."
+            exit 1
+          fi
+          echo "Next release: $TAG"
+

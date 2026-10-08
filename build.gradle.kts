@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.kikepb"
-version = "0.0.1-SNAPSHOT"
+// version comes from gradle.properties
 
 subprojects {
     group = rootProject.group

@@ -10,6 +10,9 @@ Kotlin 2.3 · JVM 21 · Spring Boot 4.1 · PostgreSQL (esquema por módulo, Flyw
 - Análisis inicial y deuda conocida: `docs/analysis/2026-10-05-analisis-repositorio.md`.
 - Documento completo del backend (contrato para la app): `docs/BACKEND.md` — mantenlo al día cuando cambie la API.
 
+## Ramas y versiones
+`feature/<x>` desde `develop` → PR a `develop` (integración) → PR a `release` (staging en Render) → PR a `master` (producción, etiqueta `vX.Y.Z`). Hotfix: `hotfix/<x>` desde `master`. Nunca commits directos en `develop`, `release` ni `master`. Versión de la próxima release en `gradle.properties`. Detalle: `docs/DEPLOY.md` §8–9.
+
 ## Módulos
 `app` (ensamblado, seguridad, config) · `common` (tipos, eventos, puertos entre módulos, storage, JWT) · `user` (auth) · `club` · `match` · `chat` · `notification`.
 Arquitectura, capas y reglas entre módulos: skill `squadfy-conventions`.

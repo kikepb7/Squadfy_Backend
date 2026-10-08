@@ -15,6 +15,7 @@ Desplegar el backend en Render con dos entornos reales (staging y producción) y
 - **RN-5**: Swagger/OpenAPI se activa con `SPRINGDOC_ENABLED` (desactivado por defecto y en producción; activado en `dev` y en staging).
 - **RN-6**: El CI (build + tests + imagen) corre en PRs y pushes a `develop`, `release` y `master`.
 - **RN-7**: Render despliega `release` → staging y `master` → producción, solo tras CI en verde (`autoDeployTrigger: checksPass`). `develop` no se despliega. Los secretos nunca están en el repo (`sync: false`).
+- **RN-8**: Cada fusión en `master` es una versión `vX.Y.Z` (etiqueta y GitHub Release); la versión vive en `gradle.properties` y una PR a `master` con una versión ya publicada no se puede fusionar.
 
 ## Criterios de aceptación
 - **CA-1** (RN-1): Dado `PORT=9090`, cuando arranca, entonces el servidor escucha en 9090.
@@ -23,6 +24,7 @@ Desplegar el backend en Render con dos entornos reales (staging y producción) y
 - **CA-4** (RN-4): Dado `CORS_ALLOWED_ORIGINS=https://squadfy.app`, cuando un preflight llega desde ese origen entonces se permite; desde otro origen no.
 - **CA-5** (RN-5): Con `SPRINGDOC_ENABLED=false` `/v3/api-docs` responde 404; con `true`, 200.
 - **CA-6** (RN-6, RN-7): `render.yaml` define los dos servicios con sus ramas, health check `/actuator/health/readiness` y secretos con `sync: false`.
+- **CA-7** (RN-8): Con `version=1.0.0`, `GET /actuator/info` muestra `build.version=1.0.0`; al fusionar en `master` se crea `v1.0.0`, y una PR a `master` con una versión ya etiquetada falla en el CI.
 
 ## API (contrato)
 Sin endpoints nuevos.

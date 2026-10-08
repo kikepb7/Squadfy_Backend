@@ -44,7 +44,7 @@ El esquema lo gestiona Flyway (`app/src/main/resources/db/migration`); Hibernate
 
 - `GET /actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`, `/actuator/info` (públicos).
 - Imagen Docker: `docker build -t squadfy-backend .` — perfil `prod` por defecto; toda la infraestructura por variables de entorno (`.env.example`). Las credenciales de Firebase se montan como fichero (`FIREBASE_CREDENTIALS_PATH=file:/run/secrets/firebase.json`), nunca se copian en la imagen.
-- CI: `.github/workflows/ci.yml` (build + tests + imagen) en cada PR y en `master`.
+- CI: `.github/workflows/ci.yml` (build + tests + imagen) en cada PR y push a `develop`, `release` y `master`. Cada fusión en `master` se etiqueta como `vX.Y.Z` (`release-tag.yml`, versión en `gradle.properties`).
 
 ## Documentación
 
@@ -52,6 +52,7 @@ El esquema lo gestiona Flyway (`app/src/main/resources/db/migration`); Hibernate
 
 - Specs (Spec-Driven Development): [`specs/README.md`](specs/README.md) y [`specs/constitution.md`](specs/constitution.md).
 - Análisis inicial: [`docs/analysis/2026-10-05-analisis-repositorio.md`](docs/analysis/2026-10-05-analisis-repositorio.md).
+- Estado actual y plan hasta producción: [`docs/analysis/2026-10-08-estado-y-plan.md`](docs/analysis/2026-10-08-estado-y-plan.md).
 
 
 ## Despliegue
