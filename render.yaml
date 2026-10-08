@@ -1,0 +1,164 @@
+# Render Blueprint (spec 013). Flow: feature/* -> develop -> release -> master.
+#   release -> squadfy-staging      master -> squadfy-prod      develop is never deployed.
+# Secrets (sync: false) are filled in the Render dashboard on the first sync; they are never in git.
+# Step by step: docs/DEPLOY.md
+services:
+  - type: web
+    name: squadfy-staging
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: release
+    region: frankfurt
+    plan: starter
+    numInstances: 1 # WebSocket and live updates live in the memory of one instance (BACKEND.md §16)
+    autoDeployTrigger: checksPass # deploy only when the GitHub CI of the commit is green
+    healthCheckPath: /actuator/health/readiness
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: "8080"
+      - key: SPRINGDOC_ENABLED # Swagger on in staging only
+        value: "true"
+      - key: NGINX_CLIENT_IP_HEADER
+        value: X-Forwarded-For
+      - key: NGINX_TRUSTED_IPS
+        value: 10.0.0.0/8,172.16.0.0/12
+      - key: CORS_ALLOWED_ORIGINS
+        value: http://localhost:*
+      - key: WEBSOCKET_ALLOWED_ORIGIN
+        value: http://localhost:8080
+      - key: FIREBASE_CREDENTIALS_PATH # Secret File named firebase.json
+        value: file:/etc/secrets/firebase.json
+      - key: RABBITMQ_SSL_ENABLED
+        value: "true"
+      - key: RABBITMQ_PORT
+        value: "5671"
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: RESET_PASSWORD_URL
+        sync: false
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_USERNAME
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_USERNAME
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: RABBITMQ_VHOST
+        sync: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_SMTP_STARTTLS
+        value: "true"
+      - key: JWT_SECRET_BASE64
+        sync: false
+      - key: SUPABASE_PROJECT_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FIREBASE_ANDROID_PACKAGE
+        sync: false
+
+  - type: web
+    name: squadfy-prod
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: master
+    region: frankfurt
+    plan: starter
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    healthCheckPath: /actuator/health/readiness
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: "8080"
+      - key: SPRINGDOC_ENABLED # Swagger off in production
+        value: "false"
+      - key: NGINX_CLIENT_IP_HEADER
+        value: X-Forwarded-For
+      - key: NGINX_TRUSTED_IPS
+        value: 10.0.0.0/8,172.16.0.0/12
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://squadfy.app
+      - key: WEBSOCKET_ALLOWED_ORIGIN
+        value: https://squadfy.app
+      - key: FIREBASE_CREDENTIALS_PATH
+        value: file:/etc/secrets/firebase.json
+      - key: RABBITMQ_SSL_ENABLED
+        value: "true"
+      - key: RABBITMQ_PORT
+        value: "5671"
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: RESET_PASSWORD_URL
+        sync: false
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_USERNAME
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_USERNAME
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: RABBITMQ_VHOST
+        sync: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_SMTP_AUTH
+        value: "true"
+      - key: MAIL_SMTP_STARTTLS
+        value: "true"
+      - key: JWT_SECRET_BASE64
+        sync: false
+      - key: SUPABASE_PROJECT_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: FIREBASE_ANDROID_PACKAGE
+        sync: false

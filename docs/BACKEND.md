@@ -152,6 +152,11 @@ Toda la infraestructura se configura por variables (plantilla en `.env.example`)
 | `FEATURE_EMAIL_VERIFICATION` | `false` (también en `prod`) | Feature flag: exigir verificar el email antes de entrar (antes `EMAIL_VERIFICATION_ENABLED`, que se sigue leyendo) |
 | `FEATURE_RATE_LIMIT` | `false` (`true` en `prod`) | Feature flag: límites por cuenta y por IP de los endpoints de auth, spec 010 (antes `RATE_LIMIT_ENABLED`) |
 | `NGINX_REQUIRE_PROXY` | `true` (`false` en `dev`) | Exigir IP real vía proxy de confianza |
+| `NGINX_CLIENT_IP_HEADER` | `X-Real-IP` | Cabecera con la IP del cliente (`X-Forwarded-For` en Render). Se toma la última entrada que no sea un proxy de confianza |
+| `NGINX_TRUSTED_IPS` | rangos de nginx/Docker | CIDRs de proxies de confianza separados por comas (Render: `10.0.0.0/8,172.16.0.0/12`) |
+| `PORT` | `8080` | Puerto del servidor (Render lo inyecta) |
+| `SPRINGDOC_ENABLED` | `false` (`true` en `dev`) | Swagger UI y `/v3/api-docs` (staging sí, producción no) |
+| `CORS_ALLOWED_ORIGINS` | vacío (`http://localhost:*` en `dev`) | Orígenes CORS (patrones, separados por comas); producción `https://squadfy.app` |
 | `DB_POOL_SIZE` | `10` | Conexiones a la BD |
 
 ### Feature flags (spec 011)
@@ -717,7 +722,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 
 | Tema | Detalle |
 |---|---|
-| Despliegue | Falta elegir hosting; la imagen Docker y la CI están listas. Servicios gestionados: Supabase (PostgreSQL + Storage), CloudAMQP, Redis Cloud, Mailgun, Firebase |
+| Despliegue | Render (staging = rama `release`, producción = `master`), ver [`DEPLOY.md`](DEPLOY.md) y spec 013. Servicios gestionados: Supabase (PostgreSQL + Storage), CloudAMQP, Redis, Mailgun, Firebase. Una sola instancia por entorno |
 | Tiempo real | Los avisos `CLUB_DATA_CHANGED` (y el chat) viven en la memoria de una instancia: con varias instancias haría falta repartirlos (p. ej. por RabbitMQ) |
 | Configuración de cierre/sorteo | Un cambio en el horario aplica a los partidos planificados después; la convocatoria ya abierta mantiene sus horas |
 | Mensajes en cola al desplegar la spec 012 | RabbitMQ pasa a Jackson 3: si quedaran eventos antiguos sin consumir en las colas al actualizar, podrían no leerse (en la práctica las colas se vacían en segundos) |

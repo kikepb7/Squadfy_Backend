@@ -55,10 +55,18 @@ class IpResolver(
         }
     }
 
-    private fun extractFromXRealIp(request: HttpServletRequest, proxyIp: String): String? {
-        return request.getHeader("X-Real-IP")?.let { header ->
-            validateAndNormalizeIp(ip = header, headerName = "X-Real-IP", proxyIp = proxyIp)
-        }
+    /**
+     * Walks the header from the right and returns the first valid IP that is not a trusted proxy:
+     * entries a client prepends to the header (further left) can never be chosen (spec 013 RN-2).
+     */
+    private fun extractClientIp(request: HttpServletRequest, proxyIp: String): String? {
+        val headerName = nginxConfig.clientIpHeader
+        return request.getHeaders(headerName).toList()
+            .flatMap { it.split(",") }
+            .asReversed()
+            .asSequence()
+            .mapNotNull { validateAndNormalizeIp(ip = it, headerName = headerName, proxyIp = proxyIp) }
+            .firstOrNull { !isFromTrustedProxy(it) }
     }
 
     private fun validateAndNormalizeIp(ip: String, headerName: String, proxyIp: String): String? {
@@ -102,7 +110,7 @@ class IpResolver(
             return remoteAddr
         }
 
-        val clientIp = extractFromXRealIp(request = request, proxyIp = remoteAddr)
+        val clientIp = extractClientIp(request = request, proxyIp = remoteAddr)
 
         if (clientIp == null) {
             logger.warn("No valid client Ip in proxy headers")
