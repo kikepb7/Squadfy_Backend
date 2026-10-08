@@ -22,7 +22,7 @@ Nada se comparte entre staging y producción: ni BD, ni `JWT_SECRET_BASE64`, ni 
 1. Ramas `develop` y `release` (creadas desde `master`). Rama por defecto: `develop` (así los PR de feature apuntan ahí).
 2. Settings → Branches → regla para `develop`, `release` y `master`:
    - Require a pull request before merging.
-   - Require status checks: **Build & test** (y **Docker image**).
+   - Require status checks: **Build & test** (y **Docker image**). En `master`, además: **Version not released yet** y **Legal texts completed**.
    - Do not allow bypassing / force pushes.
 3. Los PR van siempre hacia delante: `feature/* → develop`, `develop → release`, `release → master`.
 
@@ -96,5 +96,6 @@ Las que pones tú: `DB_*`, `REDIS_*`, `RABBITMQ_HOST/USERNAME/PASSWORD/VHOST`, `
 - La versión vive en `gradle.properties` (`version=X.Y.Z`) y es la de la **próxima** release. Se ve en `GET /actuator/info` (`build.version`) para saber qué hay desplegado en cada entorno.
 - Cada fusión en `master` es una release: el workflow `release-tag.yml` crea la etiqueta `vX.Y.Z` y una GitHub Release con las PR incluidas como notas.
 - El CI bloquea una PR a `master` si su versión ya está publicada (job **Version not released yet**), así no se pisa una etiqueta.
+- También la bloquea si la política de privacidad (`user/src/main/resources/static/legal/privacy.html`) aún tiene huecos `{{…}}` (job **Legal texts completed**, spec 014). Staging sí se despliega con el borrador.
 - Tras cada release, sube la versión en `develop` al empezar el siguiente ciclo: `MAJOR` si rompe la API de la app, `MINOR` para funciones nuevas, `PATCH` para correcciones.
 5. Rollback: Render → servicio → Events → "Rollback" al deploy anterior (las migraciones aplicadas no se revierten: toda migración debe ser compatible con la versión anterior del código).

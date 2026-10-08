@@ -27,8 +27,12 @@ class SecurityConfig {
                     .authenticated()
                     .requestMatchers("/", "/api/v1/auth/**")
                     .permitAll()
-                    // Public pages: account deletion (spec 010) and email verification (spec 011)
-                    .requestMatchers("/account/delete", "/account/delete.html", "/account/verify-email", "/account/verify-email.html")
+                    // Public pages: account deletion (spec 010), email verification (spec 011) and privacy policy (spec 014)
+                    .requestMatchers(
+                        "/account/delete", "/account/delete.html",
+                        "/account/verify-email", "/account/verify-email.html",
+                        "/legal/privacy", "/legal/privacy.html"
+                    )
                     .permitAll()
                     // Spec 011: feature flags, read by the app before logging in
                     .requestMatchers("/api/v1/features")

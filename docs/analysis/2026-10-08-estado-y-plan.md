@@ -44,12 +44,13 @@ Responsable: **C** = código (Claude), **T** = tú (cuentas, configuración, dec
 |---|---|---|---|
 | 0.1 | Ramas `develop` y `release` en GitHub | C | ✅ |
 | 0.2 | Versión en `gradle.properties`, etiqueta automática y comprobación de versión en el CI | C | ✅ en `feature/release-process` (PR a `develop`) |
-| 0.3 | Rama por defecto `develop` y protección de `develop`, `release` y `master`: PR obligatoria, checks **Build & test** y **Docker image** (en `master` también **Version not released yet**), sin force push | T | ⏳ `docs/DEPLOY.md` §2 |
+| 0.3 | Rama por defecto `develop` y protección de `develop`, `release` y `master`: PR obligatoria, checks **Build & test** y **Docker image** (en `master` también **Version not released yet** y **Legal texts completed**), sin force push | T | ⏳ `docs/DEPLOY.md` §2 |
 
 ### Fase 1 — Cerrar la versión 1.0.0 en `develop`
 | # | Tarea | Resp. | Bloquea |
 |---|---|---|---|
-| 1.1 | Página pública de **política de privacidad** (como `/account/delete`). Hace falta el texto legal o aprobar un borrador | C + T | Tiendas |
+| 1.1 | Página pública de **política de privacidad** `/legal/privacy` (spec 014) | C | ✅ borrador en `feature/privacy-policy` |
+| 1.1b | Rellenar en la política los huecos `{{RESPONSABLE}}`, `{{NIF}}`, `{{DIRECCION}}`, `{{EMAIL_CONTACTO}}` y `{{FECHA}}`, y revisar el texto (edad mínima: 14 años). El CI no deja pasar a `master` sin hacerlo | T | Producción |
 | 1.2 | Rotar la contraseña de CloudAMQP (compartida en el chat); quitar el `RABBITMQ_PASSWORD` antiguo de IntelliJ; JDK del proyecto → temurin-21 | T | Seguridad |
 | 1.3 | (Opcional) Términos de uso, si se quieren mostrar en el registro | C + T | — |
 
@@ -75,7 +76,7 @@ Responsable: **C** = código (Claude), **T** = tú (cuentas, configuración, dec
 | 4.1 | Infraestructura de producción: Supabase, CloudAMQP, Redis, Firebase y secretos **distintos** de staging (también `JWT_SECRET_BASE64`) | T |
 | 4.2 | PR `release → master` → CI → Render despliega producción → etiqueta `v1.0.0` | T |
 | 4.3 | Dominio `api.squadfy.app` en Render y `APP_PUBLIC_URL` | T |
-| 4.4 | URLs para las tiendas: `https://api.squadfy.app/account/delete` y la de la política de privacidad | T |
+| 4.4 | URLs para las tiendas: `https://api.squadfy.app/account/delete` y `https://api.squadfy.app/legal/privacy` | T |
 | 4.5 | Subir la versión de `develop` a `1.1.0` para el siguiente ciclo | C |
 
 ### Fase 5 — Operación (recomendado justo después del lanzamiento)

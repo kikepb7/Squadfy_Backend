@@ -47,6 +47,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Feature flags por entorno (`FEATURE_*`, `GET /features`; spec 011) | ✅ |
 | Avisos en tiempo real por WebSocket, estadísticas por periodo, foto por club, búsqueda de usuarios (spec 012) | ✅ |
 | Borrado de cuenta desde la app y desde la web (`/account/delete`), rate limit por cuenta (spec 010) | ✅ |
+| Política de privacidad pública (`/legal/privacy`, spec 014) | ✅ borrador: faltan los datos del responsable |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
 | Sorteo equilibrado automático a la hora del sorteo + rectificación manual | ✅ |
@@ -208,6 +209,7 @@ Para añadir uno: nueva entrada en el enum `Feature` (`common`), declararlo en `
 8. **Borrar mi cuenta** (spec 010; obligatorio en App Store y Google Play):
    - Desde la app: `DELETE /me {password}` → **204**. Contraseña incorrecta → 401 `INVALID_CREDENTIALS`. Tras el 204, borrar los tokens locales y volver al inicio.
    - Desde la web (sin la app): **`/account/delete`**, página pública con formulario (email + contraseña + confirmación) que llama a `POST /auth/delete-account {email, password}`. **Esta es la URL que hay que dar a Google Play** (`https://<dominio>/account/delete`).
+   - **Política de privacidad** (spec 014): página pública **`/legal/privacy`**. Es la URL que piden App Store y Google Play; la app debe enlazarla en el registro y en los ajustes.
    - Es **inmediato e irreversible**: se borran email, nombre, contraseña, foto, sesiones (también los access tokens ya emitidos, que pasan a dar 401), dispositivos, preferencias de notificación, ausencias y todos sus mensajes. El email y el nombre de usuario quedan libres.
    - Se **conserva anonimizado** su historial de club («Usuario eliminado …») para que marcadores y estadísticas de los demás cuadren. Sale de todos sus clubes (y de las convocatorias abiertas, con sus invitados) y de todos sus chats.
    - Clubes de los que era **OWNER**: pasan al ADMIN activo más antiguo o, si no hay, al miembro activo más antiguo. Si era el único miembro, el club se elimina con todos sus datos.
@@ -715,6 +717,7 @@ La app aún consume las rutas antiguas. Resumen de lo que cambia (detalle comple
 12. **Spec 010**: borrado de cuenta (`DELETE /me {password}` y página web `/account/delete`) y rate limit por cuenta con `Retry-After`.
 13. **Spec 011**: feature flags (`GET /features`); **la verificación de email deja de ser obligatoria** por defecto; el correo de verificación (si se activa) abre la página `/account/verify-email`; `DELETE /devices/{token}` responde 204 y solo borra dispositivos propios.
 14. **Spec 012**: aviso `CLUB_DATA_CHANGED` por WebSocket; `from`/`to` en estadísticas; foto por club (`pictureUrl`, `clubPictureUrl` en `ClubMemberDto`); `GET /users/search?q=`; el código `USER_EXITS` pasa a **`USER_EXISTS`**.
+15. **Spec 014**: política de privacidad en `/legal/privacy` (enlazarla en el registro y en ajustes, y darla a las tiendas).
 
 ---
 

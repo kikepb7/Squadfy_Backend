@@ -81,3 +81,19 @@ jobs:
           fi
           echo "Next release: $TAG"
 
+  legal:
+    name: Legal texts completed
+    # Only on pull requests to master: production cannot publish the privacy policy with {{placeholders}} (spec 014)
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the privacy policy has no placeholders
+        run: |
+          FILE=user/src/main/resources/static/legal/privacy.html
+          if grep -n '{{' "$FILE"; then
+            echo "::error file=$FILE::Fill in the privacy policy placeholders before releasing to production (specs/014-privacy-policy)."
+            exit 1
+          fi
+

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de privacidad · Squadfy</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #ffffff; --text: #1d2330; --muted: #5b6475; --border: #d9dde5;
+      --accent: #c62828; --accent-text: #ffffff; --ok: #1b7f3b; --focus: #2f6fdd;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151b; --card: #1b2029; --text: #e8ebf1; --muted: #a3abba; --border: #323a48;
+        --accent: #ef5350; --accent-text: #12151b; --ok: #66bb6a; --focus: #7aa7ff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    h2 { font-size: 1rem; margin: 24px 0 8px; }
+    p, li { color: var(--muted); }
+    ul { padding-left: 20px; margin: 0; }
+    label { display: block; font-weight: 600; margin: 16px 0 6px; }
+    input[type=email], input[type=password] {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); color: var(--text); font-size: 1rem;
+    }
+    input:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; color: var(--text); }
+    .check input { margin-top: 4px; width: 18px; height: 18px; }
+    button {
+      margin-top: 20px; width: 100%; padding: 12px; border: 0; border-radius: 8px;
+      background: var(--accent); color: var(--accent-text); font-size: 1rem; font-weight: 700; cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .message { margin-top: 16px; font-weight: 600; }
+    .message.error { color: var(--accent); }
+    .message.ok { color: var(--ok); }
+    h2 { font-size: 1.1rem; margin: 28px 0 8px; }
+    h3 { font-size: 1rem; margin: 18px 0 6px; }
+    p, li { line-height: 1.6; }
+    li { margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .95rem; }
+    th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
+    th { color: var(--text); }
+    .table-wrap { overflow-x: auto; }
+    a { color: var(--focus); }
+    .updated { font-size: .9rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Política de privacidad de Squadfy</h1>
+    <p class="updated">Última actualización: {{FECHA}}</p>
+    <p>Squadfy es una app para organizar clubes de fútbol amateur: miembros, partidos semanales, convocatorias, equipos, estadísticas, chat y notificaciones. Aquí explicamos qué datos tratamos, para qué, con quién los compartimos y cómo ejercer tus derechos.</p>
+
+    <h2>1. Responsable</h2>
+    <p>{{RESPONSABLE}} · NIF {{NIF}} · {{DIRECCION}}. Para cualquier cuestión sobre privacidad: <a href="mailto:{{EMAIL_CONTACTO}}">{{EMAIL_CONTACTO}}</a>.</p>
+
+    <h2>2. Qué datos tratamos</h2>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Datos</th><th>De dónde salen</th></tr>
+        <tr><td><strong>Cuenta</strong>: email, nombre de usuario y contraseña (guardada cifrada con un algoritmo de hash, nunca en claro).</td><td>Tú, al registrarte.</td></tr>
+        <tr><td><strong>Perfil</strong>: foto de perfil y, si la subes, una foto distinta para cada club.</td><td>Tú.</td></tr>
+        <tr><td><strong>Clubes</strong>: clubes a los que perteneces, rol, dorsal, posición, fechas de alta y baja, y vetos.</td><td>Tú y los gestores del club.</td></tr>
+        <tr><td><strong>Partidos</strong>: inscripciones y lista de espera, equipos, goles, asistencias, tarjetas, minutos jugados, resultado, nivel (rating) calculado automáticamente y estadísticas.</td><td>Tú, los gestores del club y cálculos automáticos.</td></tr>
+        <tr><td><strong>Ausencias</strong>: periodos en que no vas a jugar y su motivo, si lo indicas.</td><td>Tú.</td></tr>
+        <tr><td><strong>Invitados</strong>: nombre y, si se indica, posición de personas sin cuenta que un miembro apunta a un partido.</td><td>El miembro que los invita.</td></tr>
+        <tr><td><strong>Chat</strong>: mensajes que envías y chats en los que participas.</td><td>Tú.</td></tr>
+        <tr><td><strong>Notificaciones</strong>: identificador del dispositivo para notificaciones push, plataforma (Android o iOS) y los clubes que has silenciado.</td><td>Tu dispositivo y tú.</td></tr>
+        <tr><td><strong>Datos técnicos</strong>: dirección IP y contadores de intentos (para limitar abusos), y registros técnicos del servidor.</td><td>Tu conexión.</td></tr>
+      </table>
+    </div>
+    <p>No usamos publicidad, analítica de terceros ni cookies, ni elaboramos perfiles con fines comerciales. El nivel (rating) solo se usa para que los equipos de cada partido queden equilibrados y como clasificación dentro del club.</p>
+
+    <h2>3. Para qué y con qué base legal</h2>
+    <ul>
+      <li><strong>Prestarte el servicio</strong>: cuenta, clubes, convocatorias, sorteo de equipos, estadísticas, chat y notificaciones. Base: la ejecución del contrato que aceptas al registrarte (art. 6.1.b RGPD).</li>
+      <li><strong>Seguridad</strong>: limitar intentos de acceso, proteger las cuentas y detectar abusos. Base: interés legítimo en mantener el servicio seguro (art. 6.1.f RGPD).</li>
+      <li><strong>Correos de servicio</strong>: verificación de email (si está activada) y recuperación de contraseña. Base: ejecución del contrato.</li>
+      <li><strong>Datos de invitados</strong>: organizar el partido. El miembro que añade a un invitado debe contar con su permiso.</li>
+    </ul>
+
+    <h2>4. Quién ve tus datos dentro de Squadfy</h2>
+    <ul>
+      <li>Los <strong>miembros de tus clubes</strong> ven tu nombre de usuario, tu foto, dorsal, posición, rol, inscripciones, equipos, estadísticas, nivel (rating) y ausencias.</li>
+      <li>Los <strong>participantes de tus chats</strong> ven tus mensajes, tu nombre de usuario y tu foto.</li>
+      <li>Cualquier usuario registrado puede encontrarte por tu nombre de usuario (o escribiendo tu email completo) para iniciar un chat, y ve solo tu nombre y tu foto.</li>
+      <li><strong>Tu email nunca se muestra</strong> a otros usuarios.</li>
+    </ul>
+
+    <h2>5. Proveedores (encargados del tratamiento)</h2>
+    <p>Usamos proveedores que tratan los datos solo para prestarnos su servicio y bajo contrato:</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Proveedor</th><th>Servicio</th></tr>
+        <tr><td>Render</td><td>Alojamiento del servidor (región de Frankfurt, UE).</td></tr>
+        <tr><td>Supabase</td><td>Base de datos y almacenamiento de fotos.</td></tr>
+        <tr><td>CloudAMQP</td><td>Mensajería interna entre los componentes del servidor.</td></tr>
+        <tr><td>Proveedor de Redis (caché)</td><td>Caché de mensajes y contadores temporales de seguridad.</td></tr>
+        <tr><td>Mailgun</td><td>Envío de correos de servicio.</td></tr>
+        <tr><td>Google (Firebase Cloud Messaging)</td><td>Entrega de notificaciones push.</td></tr>
+      </table>
+    </div>
+    <p>Algunos de estos proveedores, o sus subencargados, pueden tratar datos fuera del Espacio Económico Europeo. En ese caso, la transferencia se ampara en las garantías del RGPD: decisión de adecuación (como el Marco de Privacidad de Datos UE-EE. UU.) o cláusulas contractuales tipo de la Comisión Europea. No vendemos ni cedemos tus datos a terceros, salvo obligación legal.</p>
+
+    <h2>6. Cuánto tiempo los conservamos</h2>
+    <ul>
+      <li><strong>Cuenta y perfil</strong>: mientras tengas la cuenta.</li>
+      <li><strong>Al borrar la cuenta</strong>, se eliminan al momento tu email, nombre de usuario, contraseña, fotos, sesiones, dispositivos, preferencias, ausencias y todos tus mensajes. Tu participación en partidos pasados se conserva <strong>anonimizada</strong> («Usuario eliminado») para que los resultados y estadísticas de los demás miembros sigan siendo correctos.</li>
+      <li><strong>Clubes</strong>: si eras el único miembro, el club se elimina con todos sus datos. Si no, la propiedad pasa a otro miembro.</li>
+      <li><strong>Invitados</strong>: forman parte del historial del partido mientras exista el club. Puedes pedir que se eliminen escribiendo al contacto del apartado 1.</li>
+      <li><strong>Datos temporales</strong>: sesiones de hasta 30 días, enlaces de verificación de 24 horas y de recuperación de contraseña de 30 minutos, contadores de seguridad de 1 hora y caché de mensajes de 30 minutos.</li>
+      <li><strong>Registros técnicos</strong> del servidor: el tiempo limitado que fija el proveedor de alojamiento.</li>
+    </ul>
+
+    <h2>7. Tus derechos</h2>
+    <p>Puedes ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad:</p>
+    <ul>
+      <li><strong>Borrar tu cuenta</strong>: desde la app (perfil) o, sin la app, en <a href="/account/delete">esta página de borrado de cuenta</a>.</li>
+      <li><strong>Rectificar</strong> tu nombre de usuario, foto, dorsal o posición: desde la app.</li>
+      <li><strong>Cualquier otra petición</strong>: escribe a <a href="mailto:{{EMAIL_CONTACTO}}">{{EMAIL_CONTACTO}}</a> desde el email de tu cuenta. Responderemos en un mes como máximo.</li>
+    </ul>
+    <p>Si crees que no hemos tratado bien tus datos, puedes reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es">aepd.es</a>).</p>
+
+    <h2>8. Menores</h2>
+    <p>Squadfy no está dirigido a menores de 14 años. Si tienes menos de 14 años, no puedes crear una cuenta sin el consentimiento de tus padres o tutores.</p>
+
+    <h2>9. Seguridad</h2>
+    <p>Las comunicaciones van cifradas (HTTPS). Las contraseñas se guardan con hash y las sesiones caducan. El acceso a los datos de cada club está restringido a sus miembros, y los secretos del servicio nunca se guardan en el código.</p>
+
+    <h2>10. Cambios</h2>
+    <p>Si cambiamos esta política, actualizaremos la fecha de arriba. Si el cambio es relevante, lo avisaremos en la app.</p>
+  </div>
+</main>
+</body>
+</html>

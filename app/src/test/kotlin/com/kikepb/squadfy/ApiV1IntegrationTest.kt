@@ -329,6 +329,16 @@ class ApiV1IntegrationTest : ApiIntegrationTestSupport() {
     }
 
     @Test
+    fun `the privacy policy is public and linked with the account deletion page (spec 014)`() {
+        val policy = call("GET", "/legal/privacy")
+        assertEquals(200, policy.status)
+        assertTrue("Política de privacidad de Squadfy" in policy.body)
+        assertTrue("href=\"/account/delete\"" in policy.body)
+
+        assertTrue("href=\"/legal/privacy\"" in call("GET", "/account/delete").body)
+    }
+
+    @Test
     fun `every REST endpoint lives under api v1`() {
         val allowedOutsideV1 = listOf("/error", "/v3/api-docs", "/swagger-ui")
         val paths = handlerMapping.handlerMethods.keys.flatMap { it.patternValues }
