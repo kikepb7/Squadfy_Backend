@@ -47,7 +47,7 @@ Backend para gestionar **clubes de fútbol amateur**:
 | Feature flags por entorno (`FEATURE_*`, `GET /features`; spec 011) | ✅ |
 | Avisos en tiempo real por WebSocket, estadísticas por periodo, foto por club, búsqueda de usuarios (spec 012) | ✅ |
 | Borrado de cuenta desde la app y desde la web (`/account/delete`), rate limit por cuenta (spec 010) | ✅ |
-| Política de privacidad pública (`/legal/privacy`, spec 014) | ✅ borrador: faltan los datos del responsable |
+| Política de privacidad pública (`/legal/privacy`, spec 014) | ✅ |
 | Clubes: crear, unirse por código, miembros, roles, expulsar, vetar, transferir propiedad, editar | ✅ |
 | Horario semanal, planificación automática, convocatoria con ventana y lista de espera | ✅ |
 | Sorteo equilibrado automático a la hora del sorteo + rectificación manual | ✅ |

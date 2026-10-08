@@ -34,6 +34,6 @@ Principios obligatorios: [`constitution.md`](constitution.md). Plantillas: [`_te
 | [011](011-feature-flags/spec.md) | Feature flags (verificación de email opcional), página de verificación, baja de dispositivos propia | Hecha | — |
 | [012](012-mvp-completion/spec.md) | Cierre del MVP: tiempo real, estadísticas por periodo, foto por club, búsqueda de usuarios, deuda técnica | Hecha | — |
 | [013](013-deploy-render/spec.md) | Despliegue en Render (staging/prod), flujo de ramas, CORS, IP real tras proxy | En curso | Solo falta alta de cuentas |
-| [014](014-privacy-policy/spec.md) | Política de privacidad pública (`/legal/privacy`) | Hecha — borrador pendiente de datos del responsable | Sí (publicación en tiendas) |
+| [014](014-privacy-policy/spec.md) | Política de privacidad pública (`/legal/privacy`) | Hecha | Sí (publicación en tiendas) |
 
 Análisis inicial del repositorio: [`docs/analysis/2026-10-05-analisis-repositorio.md`](../docs/analysis/2026-10-05-analisis-repositorio.md).

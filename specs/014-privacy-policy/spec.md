@@ -1,6 +1,6 @@
 # 014 — Política de privacidad pública
 
-- **Estado**: Hecha (2026-10-08), con el texto en **borrador** a falta de los datos del responsable y de revisión legal
+- **Estado**: Hecha (2026-10-08). Responsable: Enrique Palma (sin NIF ni dirección por decisión del responsable); recomendable una revisión legal del texto
 - **Módulos**: user (página estática), app (seguridad), CI
 - **Dependencias**: 010 (borrado de cuenta), 013 (despliegue)
 
@@ -10,7 +10,7 @@ Apple y Google exigen una URL pública con la política de privacidad para publi
 ## Reglas de negocio
 - **RN-1**: `/legal/privacy` es una página pública (sin sesión) en español, legible en móvil, sin cookies ni analítica.
 - **RN-2**: Describe responsable, datos tratados, finalidades y bases legales, destinatarios y proveedores, transferencias internacionales, conservación, visibilidad dentro de los clubes, invitados, derechos (con enlace a `/account/delete`), menores, seguridad y cambios.
-- **RN-3**: Los datos del responsable son huecos `{{…}}` que se rellenan antes de producción. Una PR a `master` con huecos sin rellenar no pasa el CI; staging sí puede desplegarse con el borrador.
+- **RN-3**: Mientras el texto tenga huecos `{{…}}` (datos del responsable sin rellenar), no puede llegar a producción. Una PR a `master` con huecos sin rellenar no pasa el CI; staging sí puede desplegarse con el borrador.
 - **RN-4**: La página de borrado de cuenta enlaza a la política.
 
 ## Criterios de aceptación
@@ -27,7 +27,7 @@ Apple y Google exigen una URL pública con la política de privacidad para publi
 - Términos y condiciones de uso.
 - Versiones de la política en otros idiomas.
 
-## Preguntas abiertas (huecos del borrador)
-- [ ] `{{RESPONSABLE}}` (nombre o razón social), `{{NIF}}`, `{{DIRECCION}}`, `{{EMAIL_CONTACTO}}` y `{{FECHA}}`.
-- [ ] Edad mínima: el borrador fija 14 años (art. 7 LOPDGDD). Revisar si el producto se dirige a menores.
-- [ ] Revisión por un profesional del texto final.
+## Decisiones (2026-10-08)
+- [x] Responsable: Enrique Palma, contacto `enriquepalmadev@gmail.com`. No se publican NIF ni dirección.
+- [x] Edad mínima: 14 años (art. 7 LOPDGDD).
+- [ ] Recomendado: revisión del texto por un profesional.
